@@ -11,12 +11,30 @@ window.adminProductForm = function () {
         price: Number(config.price || 0),
         hpp: Number(config.hpp || 0),
         discountPrice: Number(config.discountPrice || 0),
+
+        // Custom Dropdown Kategori
+        categories: Array.isArray(config.categories) ? config.categories : [],
+        selectedCategoryId: config.selectedCategoryId ?? "",
+        categoryDropdownOpen: false,
+
         coverPreview: null,
         galleryPreviews: [],
         videoPreviews: [],
         removeVideo: false,
         deleteImageId: null,
         deleteVideoId: null,
+
+        get selectedCategoryName() {
+            const found = this.categories.find(
+                (c) => String(c.id) === String(this.selectedCategoryId),
+            );
+            return found ? found.name : "Pilih Kategori Produk";
+        },
+
+        selectCategory(id) {
+            this.selectedCategoryId = id;
+            this.categoryDropdownOpen = false;
+        },
 
         get totalStock() {
             return this.variants.reduce(
@@ -55,7 +73,9 @@ window.adminProductForm = function () {
         },
 
         formatRupiah(num) {
-            return "Rp " + (parseInt(num, 10) || 0).toLocaleString("id-ID");
+            const value = parseInt(num, 10) || 0;
+            const prefix = value < 0 ? "-Rp " : "Rp ";
+            return prefix + Math.abs(value).toLocaleString("id-ID");
         },
 
         addVariantRow() {

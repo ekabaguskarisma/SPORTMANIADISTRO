@@ -15,6 +15,8 @@
             hpp: @json((int) old('hpp', 0)),
             discountPrice: @json((int) old('discount_price', 0)),
             defaultColor: 'Hitam',
+            categories: @json($categories->map(fn($c) => ['id' => $c->id, 'name' => $c->name])->values()),
+            selectedCategoryId: @json(old('category_id', $categories->first()?->id ?? '')),
             variants: []
         };
     </script>
@@ -57,7 +59,7 @@
                 </div>
                 <div class="bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl text-right">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Stok Varian</span>
-                    <span class="text-lg font-black text-emerald-400 tabular-nums" x-text="totalStock + ' pcs'"></span>
+                    <span class="text-lg font-black text-emerald-400 tabular-nums" x-text="totalStock + ' pcs'">0 pcs</span>
                 </div>
             </div>
 
@@ -90,14 +92,49 @@
                                    placeholder="Contoh: Jersey Futsal Pro Edition">
                         </div>
 
-                        <div>
+                        <!-- Custom Dropdown Kategori -->
+                        <div class="relative" @click.outside="categoryDropdownOpen = false">
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Kategori <span class="text-red-500">*</span></label>
-                            <select name="category_id" required
-                                    class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition font-semibold">
-                                @foreach($categories as $cat)
-                                    <option value="{{ $cat->id }}" {{ old('category_id') == $cat->id ? 'selected' : '' }}>{{ $cat->name }}</option>
-                                @endforeach
-                            </select>
+                            <input type="hidden" name="category_id" :value="selectedCategoryId" required>
+
+                            <button type="button"
+                                    @click="categoryDropdownOpen = !categoryDropdownOpen"
+                                    :class="categoryDropdownOpen ? 'is-open' : ''"
+                                    class="sm-select-trigger">
+                                <span class="flex items-center gap-2.5 truncate">
+                                    <span class="w-2 h-2 rounded-full bg-red-600 shrink-0"></span>
+                                    <span x-text="selectedCategoryName">Pilih Kategori Produk</span>
+                                </span>
+                                <svg class="w-4 h-4 text-slate-400 transition-transform duration-200 shrink-0"
+                                     :class="categoryDropdownOpen ? 'rotate-180 text-red-600' : ''"
+                                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"/>
+                                </svg>
+                            </button>
+
+                            <div x-show="categoryDropdownOpen"
+                                 x-cloak
+                                 x-transition:enter="transition ease-out duration-150"
+                                 x-transition:enter-start="opacity-0 -translate-y-1 scale-95"
+                                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                                 x-transition:leave="transition ease-in duration-100"
+                                 x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                                 x-transition:leave-end="opacity-0 -translate-y-1 scale-95"
+                                 class="sm-select-menu">
+                                <template x-for="cat in categories" :key="cat.id">
+                                    <button type="button"
+                                            @click="selectCategory(cat.id)"
+                                            :class="String(selectedCategoryId) === String(cat.id) ? 'is-selected' : ''"
+                                            class="sm-select-option">
+                                        <span x-text="cat.name"></span>
+                                        <svg x-show="String(selectedCategoryId) === String(cat.id)"
+                                             class="w-4 h-4 text-white shrink-0"
+                                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </button>
+                                </template>
+                            </div>
                         </div>
 
                         <div>
@@ -138,7 +175,7 @@
                                         <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Estimasi Laba / Pcs</span>
                                         <span class="text-base font-black tabular-nums"
                                               :class="estimatedProfitPerUnit >= 0 ? 'text-emerald-600' : 'text-rose-600'"
-                                              x-text="(parseFloat(hpp) || 0) > 0 ? formatRupiah(estimatedProfitPerUnit) : 'Belum diisi (Fallback)'"></span>
+                                              x-text="(parseFloat(hpp) || 0) > 0 ? formatRupiah(estimatedProfitPerUnit) : 'Belum diisi (Fallback)'">Belum diisi (Fallback)</span>
                                     </div>
                                     <div x-show="estimatedMarginPercent !== null" x-cloak class="text-right">
                                         <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Margin</span>
