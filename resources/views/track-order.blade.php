@@ -4,11 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lacak Pesanan | Sport Mania Distro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+        'resources/css/pages/track-order.css',
+    ])
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
 </head>
-<body class="bg-[#FAFAFA] text-gray-900 min-h-screen flex flex-col justify-between">
+<body class="track-order-page bg-[#FAFAFA] text-gray-900 min-h-screen flex flex-col justify-between">
 
     <!-- Header -->
     <nav class="bg-white border-b border-gray-100 sticky top-0 z-30">
@@ -92,12 +95,19 @@
                     @endif
 
                     @if(!empty($order->tracking_number))
-                        <div class="bg-gray-900 text-white p-4 rounded-2xl flex items-center justify-between">
+                        <div class="bg-gray-900 text-white p-4 rounded-2xl flex items-center justify-between gap-3">
                             <div>
                                 <p class="text-[10px] text-gray-400 uppercase font-bold">Nomor Resi Pengiriman</p>
                                 <p class="text-sm font-black tracking-wider text-red-400 mt-0.5">{{ $order->tracking_number }}</p>
                             </div>
-                            <span class="text-xs font-bold bg-white/10 px-3 py-1.5 rounded-lg">{{ strtoupper($order->shipping_method ?? 'REGULER') }}</span>
+                            <div class="flex items-center gap-2">
+                                <button type="button"
+                                        onclick="copyTrackingCode(@js($order->tracking_number), this)"
+                                        class="text-xs font-bold bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition cursor-pointer">
+                                    Salin Resi
+                                </button>
+                                <span class="text-xs font-bold bg-white/10 px-3 py-1.5 rounded-lg">{{ strtoupper($order->shipping_method ?? 'REGULER') }}</span>
+                            </div>
                         </div>
                     @endif
 

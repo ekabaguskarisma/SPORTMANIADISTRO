@@ -24,142 +24,30 @@
         : (int) ($produk->stock ?? 10);
 
     $unitPrice = (float) ($produk->discount_price ?? $produk->price);
+
+    $productDetailPayload = [
+        'product' => [
+            'id' => $produk->id,
+            'name' => $produk->name,
+            'category' => $produk->category->name ?? 'Sport Apparel',
+            'image' => $coverImg,
+            'price' => $unitPrice,
+        ],
+        'variants' => $variantsData,
+        'hasColors' => $colors->count() > 0,
+        'hasSizes' => $sizes->count() > 0,
+        'selectedColor' => $colors->count() === 1 ? $colors->first() : '',
+        'selectedSize' => $sizes->count() === 1 ? $sizes->first() : '',
+        'fallbackStock' => $totalStock,
+    ];
 @endphp
 
+<script>
+    window.__SM_PRODUCT_DETAIL__ = @json($productDetailPayload);
+</script>
+
 <div class="bg-white text-gray-900 min-h-screen py-10"
-     x-data="{
-         product: {
-             id: {{ $produk->id }},
-             name: @js($produk->name),
-             category: @js($produk->category->name ?? 'Sport Apparel'),
-             image: @js($coverImg),
-             price: {{ $unitPrice }}
-         },
-         variants: @json($variantsData),
-         hasColors: {{ $colors->count() > 0 ? 'true' : 'false' }},
-         hasSizes: {{ $sizes->count() > 0 ? 'true' : 'false' }},
-         selectedColor: @js($colors->count() === 1 ? $colors->first() : ''),
-         selectedSize: @js($sizes->count() === 1 ? $sizes->first() : ''),
-         fallbackStock: {{ $totalStock }},
-         qty: 1,
-         sizeGuideOpen: false,
-         toast: { show: false, message: '', type: 'success' },
-
-         triggerToast(message, type = 'success') {
-             this.toast.message = message;
-             this.toast.type = type;
-             this.toast.show = true;
-             window.dispatchEvent(new CustomEvent('show-toast', { detail: message }));
-             setTimeout(() => { this.toast.show = false; }, 3500);
-         },
-
-         get isSelectionComplete() {
-             return (!this.hasColors || this.selectedColor !== '') && (!this.hasSizes || this.selectedSize !== '');
-         },
-
-         get matchedVariant() {
-             if (this.variants.length === 0) return null;
-             return this.variants.find(v => {
-                 const colorMatch = !this.hasColors || v.color === this.selectedColor;
-                 const sizeMatch = !this.hasSizes || v.size === this.selectedSize;
-                 return colorMatch && sizeMatch;
-             }) || null;
-         },
-
-         get currentStock() {
-             if (!this.isSelectionComplete) return this.fallbackStock;
-             if (this.variants.length > 0) {
-                 return this.matchedVariant ? Number(this.matchedVariant.stock) : 0;
-             }
-             return this.fallbackStock;
-         },
-
-         isColorAvailable(color) {
-             if (this.variants.length === 0) return this.fallbackStock > 0;
-             return this.variants.some(v => v.color === color && Number(v.stock) > 0);
-         },
-
-         isSizeAvailable(size) {
-             if (this.variants.length === 0) return this.fallbackStock > 0;
-             return this.variants.some(v => {
-                 const colorOk = !this.hasColors || !this.selectedColor || v.color === this.selectedColor;
-                 return v.size === size && colorOk && Number(v.stock) > 0;
-             });
-         },
-
-         selectColor(color) {
-             this.selectedColor = color;
-             if (this.isSelectionComplete && this.qty > this.currentStock) {
-                 this.qty = Math.max(1, this.currentStock);
-             }
-         },
-
-         selectSize(size) {
-             this.selectedSize = size;
-             if (this.isSelectionComplete && this.qty > this.currentStock) {
-                 this.qty = Math.max(1, this.currentStock);
-             }
-         },
-
-         get whatsappUrl() {
-             let details = [];
-             if (this.selectedColor) details.push('Warna: ' + this.selectedColor);
-             if (this.selectedSize) details.push('Ukuran: ' + this.selectedSize);
-             const variantText = details.length ? ' (' + details.join(', ') + ')' : '';
-             const msg = `Halo Admin Sport Mania Distro, saya ingin memesan *${this.product.name}*${variantText} sebanyak ${this.qty} pcs (Harga satuan: Rp ${Number(this.product.price).toLocaleString('id-ID')}). Mohon info ketersediaannya.`;
-             return 'https://wa.me/6282234548092?text=' + encodeURIComponent(msg);
-         },
-
-         addToCart() {
-             if (this.hasColors && !this.selectedColor) {
-                 this.triggerToast('Silakan pilih variasi warna terlebih dahulu.', 'error');
-                 return;
-             }
-             if (this.hasSizes && !this.selectedSize) {
-                 this.triggerToast('Silakan pilih ukuran (size) terlebih dahulu.', 'error');
-                 return;
-             }
-             if (this.currentStock <= 0) {
-                 this.triggerToast('Maaf, stok varian yang dipilih sedang habis.', 'error');
-                 return;
-             }
-
-             const sizeVal = this.matchedVariant ? this.matchedVariant.size : (this.selectedSize || 'All Size');
-             const colorVal = this.matchedVariant ? this.matchedVariant.color : (this.selectedColor || '-');
-
-             let cartItems = JSON.parse(localStorage.getItem('cart_items')) || [];
-             let existingItem = cartItems.find(
-                 i => i.id === this.product.id && i.size === sizeVal && i.color === colorVal
-             );
-
-             const requestedQty = parseInt(this.qty) || 1;
-             const currentInCart = existingItem ? Number(existingItem.qty) : 0;
-
-             if (currentInCart + requestedQty > this.currentStock) {
-                 this.triggerToast(`Stok tidak mencukupi. Maksimal tersedia: ${this.currentStock} pcs.`, 'error');
-                 return;
-             }
-
-             if (existingItem) {
-                 existingItem.qty += requestedQty;
-             } else {
-                 cartItems.push({
-                     id: this.product.id,
-                     name: this.product.name,
-                     category: this.product.category,
-                     image: this.product.image,
-                     size: sizeVal,
-                     color: colorVal,
-                     price: Number(this.product.price),
-                     qty: requestedQty
-                 });
-             }
-
-             localStorage.setItem('cart_items', JSON.stringify(cartItems));
-             window.dispatchEvent(new CustomEvent('cart-updated', { detail: cartItems }));
-             this.triggerToast('Produk berhasil ditambahkan ke keranjang!', 'success');
-         }
-     }">
+     x-data="productDetail(window.__SM_PRODUCT_DETAIL__)">
 
     <!-- Floating Toast Notification -->
     <div class="fixed top-6 right-6 z-50 max-w-sm w-full px-4 pointer-events-none"
@@ -315,9 +203,9 @@
                         <span class="text-[11px] text-gray-400 font-medium" x-text="isSelectionComplete ? ('Maksimal tersedia: ' + currentStock + ' pcs') : 'Pilih varian untuk melihat stok pasti'"></span>
                     </div>
                     <div class="flex items-center gap-3">
-                        <button type="button" @click="if(qty > 1) qty--" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-black text-sm hover:bg-gray-100 transition">-</button>
+                        <button type="button" @click="decrementQty()" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-black text-sm hover:bg-gray-100 transition">-</button>
                         <span class="font-black text-sm w-6 text-center" x-text="qty"></span>
-                        <button type="button" @click="if(qty < Math.max(1, currentStock)) qty++; else triggerToast('Jumlah mencapai batas stok tersedia.', 'error');" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-black text-sm hover:bg-gray-100 transition">+</button>
+                        <button type="button" @click="incrementQty()" class="w-8 h-8 rounded-xl bg-white border border-gray-300 font-black text-sm hover:bg-gray-100 transition">+</button>
                     </div>
                 </div>
 

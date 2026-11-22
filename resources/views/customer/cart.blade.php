@@ -4,113 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Keranjang Belanja | Sport Mania Distro</title>
-    
-    <!-- Tailwind CSS, Font Inter & Alpine.js -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+        'resources/css/pages/customer-cart.css',
+    ])
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <style> 
-        body { font-family: 'Inter', sans-serif; } 
-        [x-cloak] { display: none !important; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #fafafa; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        @keyframes shrinkBar { from { width: 100%; } to { width: 0%; } }
-        .animate-toast-bar { animation: shrinkBar 3s linear forwards; }
-    </style>
 </head>
-<body class="bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white flex flex-col min-h-screen"
-      x-data="{
-          mobileMenuOpen: false,
-          cartItems: (JSON.parse(localStorage.getItem('cart_items')) || []).map(item => ({
-              ...item,
-              size: item.size || 'All Size',
-              color: item.color || '-',
-              qty: Math.max(1, Number(item.qty || 1))
-          })),
-
-          syncCart() {
-              const raw = JSON.parse(localStorage.getItem('cart_items')) || [];
-              this.cartItems = raw.map(item => ({
-                  ...item,
-                  size: item.size || 'All Size',
-                  color: item.color || '-',
-                  qty: Math.max(1, Number(item.qty || 1))
-              }));
-          },
-
-          get totalItems() {
-              return this.cartItems.reduce((acc, item) => acc + Number(item.qty || 0), 0);
-          },
-          get subtotal() {
-              return this.cartItems.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.qty || 0)), 0);
-          },
-          get shippingCost() {
-              return this.subtotal >= 250000 || this.subtotal === 0 ? 0 : 20000;
-          },
-          get total() {
-              return this.subtotal + this.shippingCost;
-          },
-
-          getItemMaxStock(item) {
-              if (item.maxStock !== undefined && item.maxStock !== null && item.maxStock !== '') {
-                  return Number(item.maxStock);
-              }
-              if (item.stock !== undefined && item.stock !== null && item.stock !== '') {
-                  return Number(item.stock);
-              }
-              return null;
-          },
-          
-          updateStorage() {
-              localStorage.setItem('cart_items', JSON.stringify(this.cartItems));
-              window.dispatchEvent(new CustomEvent('cart-updated', { detail: this.cartItems }));
-          },
-
-          triggerNotify(type, title, message) {
-              window.dispatchEvent(new CustomEvent('notify', { detail: { type, title, message } }));
-          },
-
-          removeItem(index) {
-              let itemName = this.cartItems[index].name;
-              this.cartItems.splice(index, 1);
-              this.updateStorage();
-              this.triggerNotify('warning', 'Dihapus', itemName + ' dihapus dari keranjang.');
-          },
-
-          clearCart() {
-              if (confirm('Kosongkan seluruh isi keranjang belanja?')) {
-                  this.cartItems = [];
-                  this.updateStorage();
-                  this.triggerNotify('warning', 'Keranjang Dikosongkan', 'Semua produk telah dihapus dari keranjang.');
-              }
-          },
-          
-          increaseQty(index) {
-              const item = this.cartItems[index];
-              const currentQty = Number(item.qty);
-              const maxLimit = this.getItemMaxStock(item);
-
-              if (maxLimit !== null && (maxLimit <= 0 || currentQty >= maxLimit)) {
-                  this.triggerNotify(
-                      'error',
-                      'Batas Stok',
-                      maxLimit <= 0 ? 'Stok produk ini sedang habis.' : `Stok maksimal tersedia hanya ${maxLimit} pcs.`
-                  );
-                  return;
-              }
-              item.qty = currentQty + 1;
-              this.updateStorage();
-          },
-          
-          decreaseQty(index) {
-              if (Number(this.cartItems[index].qty) > 1) {
-                  this.cartItems[index].qty = Number(this.cartItems[index].qty) - 1;
-                  this.updateStorage();
-              }
-          }
-      }"
+<body class="customer-cart-page bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white flex flex-col min-h-screen"
+      x-data="customerCart()"
       @cart-updated.window="syncCart()"
       @storage.window="syncCart()"
       @pageshow.window="syncCart()">
@@ -368,29 +271,7 @@
     </footer>
 
     <!-- Toast Notification -->
-    <div x-data="{ 
-            show: false, 
-            type: 'success', 
-            title: 'Berhasil!', 
-            message: '', 
-            timeout: null,
-            barKey: 0,
-            openToast(detail) {
-                if (typeof detail === 'string') {
-                    this.type = 'success';
-                    this.title = 'Notifikasi';
-                    this.message = detail;
-                } else {
-                    this.type = detail.type || 'success';
-                    this.title = detail.title || 'Notifikasi';
-                    this.message = detail.message || '';
-                }
-                this.barKey++;
-                this.show = true;
-                clearTimeout(this.timeout);
-                this.timeout = setTimeout(() => { this.show = false }, 3000);
-            }
-         }"
+    <div x-data="cartToast()"
          @notify.window="openToast($event.detail)"
          @show-toast.window="openToast($event.detail)"
          class="fixed top-24 right-4 sm:right-8 z-[100] flex flex-col gap-3 pointer-events-none"

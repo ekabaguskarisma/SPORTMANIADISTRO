@@ -4,36 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pesanan Saya | Sport Mania Distro</title>
-    
-    <!-- Tailwind CDN, Font Inter & Alpine.js -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+        'resources/css/pages/customer-history.css',
+    ])
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <style> 
-        body { font-family: 'Inter', sans-serif; } 
-        [x-cloak] { display: none !important; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #fafafa; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
 </head>
-<body class="bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white flex flex-col min-h-screen"
-      x-data="{ 
-          mobileMenuOpen: false,
-          cartItems: JSON.parse(localStorage.getItem('cart_items')) || [],
-          get cartCount() {
-              return this.cartItems.reduce((acc, item) => acc + item.qty, 0);
-          }
-      }">
+<body class="customer-history-page bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white flex flex-col min-h-screen"
+      x-data="customerHistoryPage()"
+      @cart-updated.window="syncCart()"
+      @storage.window="syncCart()"
+      @pageshow.window="syncCart()"
+      @keydown.escape.window="showReviewModal = false">
 
     <!-- ========================================== -->
     <!-- ELEGAN TOAST NOTIFICATION (Global Handler) -->
     <!-- ========================================== -->
-    <div x-data="{ show: false, message: '' }" 
-         @show-toast.window="show = true; message = $event.detail; setTimeout(() => show = false, 4000)"
+    <div x-data="historyToast()" 
+         @show-toast.window="open($event.detail)"
          x-show="show"
          x-transition:enter="translate-y-[-20px] opacity-0"
          x-transition:enter-end="translate-y-0 opacity-100"
@@ -130,15 +120,7 @@
     <!-- ========================================== -->
     <!-- KONTEN UTAMA: RIWAYAT PESANAN -->
     <!-- ========================================== -->
-    <main class="max-w-5xl mx-auto py-10 px-4 sm:px-6 flex-grow w-full"
-          x-data="{ 
-              activeTab: 'semua',
-              showReviewModal: false,
-              selectedProduct: '',
-              rating: 5,
-              hoverRating: 0,
-              isSubmitting: false
-          }">
+    <main class="max-w-5xl mx-auto py-10 px-4 sm:px-6 flex-grow w-full">
         
         <div class="mb-8">
             <h1 class="text-2xl sm:text-3xl font-black text-gray-900 uppercase tracking-tight">Pesanan <span class="text-red-600">Saya</span></h1>
@@ -214,7 +196,7 @@
                             <p class="text-[10px] font-bold text-gray-500 uppercase">Total Belanja</p>
                             <p class="text-lg font-black text-red-600">Rp 850.000</p>
                         </div>
-                        <button @click="showReviewModal = true; selectedProduct = 'Adidas Performance Elite'; rating = 5;" 
+                        <button @click="openReviewModal('Adidas Performance Elite')" 
                                 class="mt-4 w-full bg-gray-900 hover:bg-gray-800 text-white text-[11px] font-bold uppercase tracking-wider py-2.5 px-4 rounded-xl transition shadow-sm cursor-pointer">
                             Beri Ulasan
                         </button>
@@ -250,19 +232,12 @@
                         </button>
                     </div>
 
-                    <form @submit.prevent="
-                        isSubmitting = true;
-                        setTimeout(() => {
-                            isSubmitting = false;
-                            showReviewModal = false;
-                            window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Ulasan berhasil dikirim! Terima kasih.' }));
-                        }, 800);
-                    " class="space-y-6">
+                    <form @submit.prevent="submitReview()" class="space-y-6">
                         @csrf
                         <div>
                             <label class="block text-xs font-bold uppercase text-gray-700 mb-2">Kualitas Produk</label>
                             <div class="flex items-center gap-1.5 cursor-pointer" @mouseleave="hoverRating = 0">
-                                <template x-for="i in 5">
+                                <template x-for="i in 5" :key="i">
                                     <button type="button" 
                                             @mouseenter="hoverRating = i" 
                                             @mouseleave="hoverRating = 0"
@@ -341,7 +316,7 @@
                 <div class="space-y-6">
                     <div>
                         <h4 class="font-black text-xs uppercase tracking-[0.2em] text-white mb-2">Berlangganan Newsletter</h4>
-                        <form @submit.prevent="window.dispatchEvent(new CustomEvent('show-toast', { detail: 'Terima kasih telah berlangganan newsletter kami!' }))" class="space-y-3">
+                        <form @submit.prevent="submitNewsletter($event)" class="space-y-3">
                             <input type="email" placeholder="Alamat email Kamu" required class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-red-500">
                             <button type="submit" class="w-full bg-white hover:bg-red-600 text-black hover:text-white font-bold text-xs uppercase tracking-wider py-2.5 rounded-xl transition cursor-pointer">Submit</button>
                         </form>

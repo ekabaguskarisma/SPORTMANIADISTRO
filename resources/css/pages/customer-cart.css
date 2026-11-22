@@ -1,0 +1,33 @@
+body.customer-cart-page {
+    font-family: "Inter", sans-serif;
+}
+
+[x-cloak] {
+    display: none !important;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: #fafafa;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 4px;
+}
+
+@keyframes shrinkBar {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}
+
+.animate-toast-bar {
+    animation: shrinkBar 3s linear forwards;
+}
