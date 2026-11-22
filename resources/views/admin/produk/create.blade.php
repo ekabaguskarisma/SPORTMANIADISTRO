@@ -15,6 +15,7 @@
           variants: [{ id: Date.now(), size: '', color: '', stock: 0 }],
           defaultColor: 'Hitam',
           price: {{ (int) old('price', 0) }},
+          hpp: {{ (int) old('hpp', 0) }},
           discountPrice: {{ (int) old('discount_price', 0) }},
           coverPreview: null,
           galleryPreviews: [],
@@ -24,6 +25,24 @@
               return this.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
           },
 
+          get effectivePrice() {
+              const p = parseFloat(this.price) || 0;
+              const d = parseFloat(this.discountPrice) || 0;
+              return (d > 0 && d < p) ? d : p;
+          },
+
+          get estimatedProfitPerUnit() {
+              const h = parseFloat(this.hpp) || 0;
+              if (h <= 0) return 0;
+              return this.effectivePrice - h;
+          },
+
+          get estimatedMarginPercent() {
+              const h = parseFloat(this.hpp) || 0;
+              if (h <= 0 || this.effectivePrice <= 0) return null;
+              return Math.round(((this.effectivePrice - h) / this.effectivePrice) * 100);
+          },
+
           get discountPercent() {
               const p = parseFloat(this.price) || 0;
               const d = parseFloat(this.discountPrice) || 0;
@@ -31,6 +50,10 @@
                   return Math.round(((p - d) / p) * 100);
               }
               return 0;
+          },
+
+          formatRupiah(num) {
+              return 'Rp ' + (parseInt(num) || 0).toLocaleString('id-ID');
           },
 
           applyPreset(type) {
@@ -120,7 +143,7 @@
                 <div>
                     <span class="text-[10px] font-black uppercase tracking-widest text-red-500">Manajemen Katalog</span>
                     <h1 class="text-xl font-black text-white tracking-tight mt-0.5">Tambah Produk Baru</h1>
-                    <p class="text-slate-400 text-xs mt-1">Gunakan Smart Preset untuk mengisi varian ukuran pakaian/sepatu secara instan.</p>
+                    <p class="text-slate-400 text-xs mt-1">Atur harga jual, modal/HPP per produk, dan varian ukuran secara instan.</p>
                 </div>
                 <div class="bg-slate-900/90 border border-slate-800 px-4 py-2.5 rounded-2xl text-right">
                     <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Total Stok Varian</span>
@@ -142,11 +165,11 @@
                     </div>
                 @endif
 
-                <!-- Bagian 1: Informasi Dasar Produk -->
+                <!-- Bagian 1: Informasi Dasar & Harga Modal (HPP) -->
                 <div class="space-y-4">
                     <h3 class="text-[11px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-2">
                         <span class="w-1.5 h-1.5 rounded-full bg-red-600"></span>
-                        Informasi Dasar Produk
+                        Informasi Dasar & Harga Modal
                     </h3>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -168,7 +191,7 @@
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Harga Normal (Rp) <span class="text-red-500">*</span></label>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Harga Normal / Jual (Rp) <span class="text-red-500">*</span></label>
                             <input type="number" name="price" x-model="price" required min="0"
                                    class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
                                    placeholder="250000">
@@ -184,6 +207,37 @@
                             <input type="number" name="discount_price" x-model="discountPrice" min="0"
                                    class="w-full text-sm bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
                                    placeholder="199000">
+                        </div>
+
+                        <div class="md:col-span-2 bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                                <div>
+                                    <label for="hpp" class="block text-xs font-bold text-slate-700 mb-1.5">
+                                        Harga Modal / HPP Satuan (Rp) <span class="text-slate-400 font-normal">(Untuk Hitung Laba Kotor)</span>
+                                    </label>
+                                    <input type="number" id="hpp" name="hpp" x-model="hpp" min="0"
+                                           class="w-full text-sm bg-white border border-slate-200 rounded-xl px-4 py-3 tabular-nums focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 transition"
+                                           placeholder="Contoh: 145000">
+                                    <p class="text-[11px] text-slate-500 mt-1.5">
+                                        Kosongkan / isi 0 jika ingin otomatis memakai rasio fallback di rekap bulanan.
+                                    </p>
+                                </div>
+
+                                <div class="bg-white border border-slate-200/80 rounded-xl p-3.5 flex items-center justify-between gap-3">
+                                    <div>
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Estimasi Laba / Pcs</span>
+                                        <span class="text-base font-black tabular-nums"
+                                              :class="estimatedProfitPerUnit >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+                                              x-text="(parseFloat(hpp) || 0) > 0 ? formatRupiah(estimatedProfitPerUnit) : 'Belum diisi (Fallback)'"></span>
+                                    </div>
+                                    <div x-show="estimatedMarginPercent !== null" x-cloak class="text-right">
+                                        <span class="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Margin</span>
+                                        <span class="text-xs font-black px-2 py-0.5 rounded-md tabular-nums"
+                                              :class="estimatedMarginPercent >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'"
+                                              x-text="estimatedMarginPercent + '%'"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
