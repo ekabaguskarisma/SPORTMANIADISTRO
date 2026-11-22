@@ -4,23 +4,25 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\View;
 
-// Import Controllers
+// Public & Customer Controllers
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CheckoutController;
-use App\Http\Controllers\AdminProductController;
-use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\CustomerOrderController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StoreFeatureController;
 use App\Http\Controllers\Auth\SocialiteController;
+
+// Admin Controllers
+use App\Http\Controllers\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\AdminOrderController; // Ubah ke App\Http\Controllers\Admin\OrderController as AdminOrderController jika memakai versi folder Admin
 use App\Http\Controllers\Admin\PromoBannerController;
 use App\Http\Controllers\Admin\PosController;
 use App\Http\Controllers\Admin\HomeSectionController;
-use App\Http\Controllers\StoreFeatureController;
 
 // ==========================================
-// VIEW COMPOSER: OTOMATIS KIRIM PROMO AKTIF & SECTION BERANDA KE ETALASE (welcome.blade.php)
+// VIEW COMPOSER: ETALASE BERANDA (welcome.blade.php)
 // ==========================================
 View::composer('welcome', function ($view) {
     $promoBanners = collect();
@@ -71,23 +73,16 @@ View::composer('welcome', function ($view) {
     ]);
 });
 
-
 // ==========================================
 // RUTE UMUM & ETALASE
 // ==========================================
-
-// Halaman Utama (Homepage) & Pencarian Katalog
 Route::get('/', [ProductController::class, 'index'])->name('home');
-
-// Halaman Detail Produk
 Route::get('/produk/{id}', [ProductController::class, 'show'])->name('produk.show');
 
-// Route Keranjang Belanja (Bisa diakses tanpa login)
 Route::get('/customer/cart', function () {
     return view('customer.cart');
 })->name('customer.cart');
 
-// Lacak Pesanan Publik & Cek Voucher
 Route::get('/lacak-pesanan', [StoreFeatureController::class, 'trackOrder'])->name('order.track');
 Route::post('/voucher/apply', [StoreFeatureController::class, 'applyVoucher'])->name('voucher.apply');
 
@@ -95,12 +90,9 @@ Route::post('/voucher/apply', [StoreFeatureController::class, 'applyVoucher'])->
 Route::get('/auth/google', [SocialiteController::class, 'redirectToGoogle'])->name('auth.google');
 Route::get('/auth/google/callback', [SocialiteController::class, 'handleGoogleCallback'])->name('auth.google.callback');
 
-
 // ==========================================
 // RUTE AUTENTIKASI & PROFIL
 // ==========================================
-
-// Halaman Dashboard Default (Redirect Berdasarkan Role)
 Route::get('/dashboard', function () {
     $role = strtolower((string) (auth()->user()->role ?? ''));
     if ($role === 'admin') {
@@ -109,44 +101,30 @@ Route::get('/dashboard', function () {
     return redirect('/');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
-// Profil Pengguna
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-});
 
-
-// ==========================================
-// RUTE KHUSUS PELANGGAN (CUSTOMER)
-// ==========================================
-Route::middleware('auth')->group(function () {
-    // Halaman Form Checkout
+    // Checkout & Pesanan Pelanggan
     Route::get('/customer/checkout', [CheckoutController::class, 'index'])->name('customer.checkout');
-
-    // API Simpan Order dari Checkout ke Database (Diakses via Fetch Javascript)
     Route::post('/checkout/process', [CheckoutController::class, 'store'])->name('checkout.process');
 
-    // Riwayat Pesanan, Pembatalan & Konfirmasi Selesai
     Route::get('/customer/orders', [CustomerOrderController::class, 'index'])->name('customer.orders');
     Route::post('/customer/orders/{id}/cancel', [CustomerOrderController::class, 'cancel'])->name('customer.orders.cancel');
     Route::post('/customer/orders/{id}/complete', [CustomerOrderController::class, 'complete'])->name('customer.orders.complete');
+    Route::post('/orders/{id}/payment-proof', [CustomerOrderController::class, 'uploadPaymentProof'])->name('customer.orders.payment-proof');
 
-    // Simpan Ulasan Produk setelah Pesanan Selesai
+    // Ulasan Produk
     Route::post('/customer/reviews', [ReviewController::class, 'store'])->name('customer.reviews.store');
-
-    // Unggah / Unggah Ulang Bukti Pembayaran
-    Route::post('/orders/{id}/payment-proof', [CustomerOrderController::class, 'uploadPaymentProof'])
-        ->name('customer.orders.payment-proof');
 });
 
-
 // ==========================================
-// RUTE KHUSUS ADMIN (TERPROTEKSI MIDDLEWARE ROLE:ADMIN)
+// RUTE KHUSUS ADMIN (ROLE:ADMIN)
 // ==========================================
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
 
-    // Dashboard Admin Utama (Dengan Eager Loading untuk mencegah N+1 Query)
+    // Dashboard Admin Utama
     Route::get('/dashboard', function () {
         $relations = ['category', 'variants'];
         if (method_exists(\App\Models\Product::class, 'images')) {
@@ -175,7 +153,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
             ? \App\Models\Voucher::latest()->get()
             : collect();
 
-        // Kirim $promos dan alias $promoBanners agar kompatibel dengan blade
         $promoBanners = $promos;
 
         return view('dashboard', compact('products', 'orders', 'customers', 'promos', 'promoBanners', 'vouchers'));
@@ -185,7 +162,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
     Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.checkout');
 
-    // Manajemen Produk
+    // Manajemen Produk & Media Galeri
     Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
     Route::get('/produk/create', [AdminProductController::class, 'create'])->name('produk.create');
     Route::post('/produk', [AdminProductController::class, 'store'])->name('produk.store');
@@ -195,7 +172,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('/product-image/{id}', [AdminProductController::class, 'destroyImage'])->name('product-image.destroy');
     Route::delete('/product-video/{id}', [AdminProductController::class, 'destroyVideo'])->name('product-video.destroy');
 
-    // Manajemen Pesanan & Rekap Bulanan (Route statis wajib di atas wildcard {id})
+    // Manajemen Pesanan & Rekap Bulanan
     Route::get('/orders', [AdminOrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/export-csv', [AdminOrderController::class, 'exportCsv'])->name('orders.export-csv');
     Route::get('/orders/{id}', [AdminOrderController::class, 'show'])->name('orders.show');
@@ -209,7 +186,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::patch('/promos/{promo}/toggle', [PromoBannerController::class, 'toggle'])->name('promos.toggle');
     Route::delete('/promos/{promo}', [PromoBannerController::class, 'destroy'])->name('promos.destroy');
 
-    // Pengaturan Bagian Beranda (Trusted Brands, Hero Slider, Curated Categories, Featured Showcase)
+    // Pengaturan Bagian Beranda
     Route::get('/home-sections', [HomeSectionController::class, 'index'])->name('home-sections.index');
     Route::put('/home-sections', [HomeSectionController::class, 'update'])->name('home-sections.update');
 

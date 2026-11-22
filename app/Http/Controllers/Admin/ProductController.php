@@ -13,27 +13,18 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    /**
-     * Menampilkan daftar semua produk di panel admin.
-     */
     public function index()
     {
         $products = Product::with(['category', 'variants', 'images', 'videos'])->latest()->get();
         return view('admin.produk.index', compact('products'));
     }
 
-    /**
-     * Menampilkan form untuk menambah produk baru.
-     */
     public function create()
     {
         $categories = Category::all();
         return view('admin.produk.create', compact('categories'));
     }
 
-    /**
-     * Menyimpan data produk baru beserta varian, galeri foto, dan multi-video ke database.
-     */
     public function store(Request $request)
     {
         $request->validate([
@@ -41,6 +32,7 @@ class ProductController extends Controller
             'category_id'    => 'required|exists:categories,id',
             'price'          => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
+            'hpp'            => 'nullable|numeric|min:0',
             'image'          => 'required|image|mimes:jpeg,png,jpg,webp|max:2048',
             'images'         => 'nullable|array',
             'images.*'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -59,13 +51,14 @@ class ProductController extends Controller
             'name'           => $request->name,
             'category_id'    => $request->category_id,
             'price'          => $request->price,
-            'discount_price' => $request->discount_price,
+            'discount_price' => $request->discount_price ?: null,
+            'hpp'            => $request->hpp ?: 0,
             'description'    => $request->description,
             'image'          => $mainImagePath,
             'is_featured'    => $request->has('is_featured') ? 1 : 0,
         ]);
 
-        // 3. Simpan Banyak Foto Galeri Tambahan (Jika ada)
+        // 3. Simpan Banyak Foto Galeri Tambahan
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $file) {
                 $path = $file->store('products/gallery', 'public');
@@ -76,7 +69,7 @@ class ProductController extends Controller
             }
         }
 
-        // 4. Simpan Banyak Video Katalog (Jika ada)
+        // 4. Simpan Banyak Video Katalog
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $videoFile) {
                 $videoPath = $videoFile->store('product-videos', 'public');
@@ -105,9 +98,6 @@ class ProductController extends Controller
                          ->with('success', 'Produk beserta varian, galeri foto, dan video berhasil ditambahkan!');
     }
 
-    /**
-     * Menampilkan form edit produk.
-     */
     public function edit($id)
     {
         $product = Product::with(['variants', 'images', 'videos'])->findOrFail($id);
@@ -115,9 +105,6 @@ class ProductController extends Controller
         return view('admin.produk.edit', compact('product', 'categories'));
     }
 
-    /**
-     * Memperbarui data produk, galeri foto, multi-video, dan variannya.
-     */
     public function update(Request $request, $id)
     {
         $product = Product::with(['variants', 'images', 'videos'])->findOrFail($id);
@@ -127,6 +114,7 @@ class ProductController extends Controller
             'category_id'    => 'required|exists:categories,id',
             'price'          => 'required|numeric|min:0',
             'discount_price' => 'nullable|numeric|min:0',
+            'hpp'            => 'nullable|numeric|min:0',
             'image'          => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
             'images'         => 'nullable|array',
             'images.*'       => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
@@ -138,7 +126,7 @@ class ProductController extends Controller
             'variant_stocks' => 'nullable|array',
         ]);
 
-        // 1. Jika ada upload gambar cover baru, hapus gambar lama dan simpan yang baru
+        // 1. Update gambar cover jika ada upload baru
         $mainImagePath = $product->image;
         if ($request->hasFile('image')) {
             if ($product->image && Storage::disk('public')->exists($product->image)) {
@@ -147,7 +135,7 @@ class ProductController extends Controller
             $mainImagePath = $request->file('image')->store('products', 'public');
         }
 
-        // 1B. Jika video tunggal lama dicentang untuk dihapus
+        // 1B. Hapus video tunggal lama jika dicentang
         $legacyVideoPath = $product->video;
         if ($request->boolean('remove_video') && !empty($legacyVideoPath)) {
             if (Storage::disk('public')->exists($legacyVideoPath)) {
@@ -161,14 +149,15 @@ class ProductController extends Controller
             'name'           => $request->name,
             'category_id'    => $request->category_id,
             'price'          => $request->price,
-            'discount_price' => $request->discount_price,
+            'discount_price' => $request->discount_price ?: null,
+            'hpp'            => $request->hpp ?: 0,
             'description'    => $request->description,
             'image'          => $mainImagePath,
             'video'          => $legacyVideoPath,
             'is_featured'    => $request->has('is_featured') ? 1 : 0,
         ]);
 
-        // 3. Tambah Foto Galeri Baru (Jika diunggah saat edit)
+        // 3. Tambah Foto Galeri Baru
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $file) {
                 $path = $file->store('products/gallery', 'public');
@@ -179,7 +168,7 @@ class ProductController extends Controller
             }
         }
 
-        // 4. Tambah Video Katalog Baru (Bisa lebih dari 1)
+        // 4. Tambah Video Katalog Baru
         if ($request->hasFile('videos')) {
             foreach ($request->file('videos') as $videoFile) {
                 $videoPath = $videoFile->store('product-videos', 'public');
@@ -190,7 +179,7 @@ class ProductController extends Controller
             }
         }
 
-        // 5. Perbarui Varian (Hapus varian lama, lalu buat ulang dari input form)
+        // 5. Perbarui Varian
         $product->variants()->delete();
         if ($request->filled('variant_sizes')) {
             foreach ($request->variant_sizes as $index => $size) {
@@ -210,7 +199,23 @@ class ProductController extends Controller
     }
 
     /**
-     * Menghapus satu video katalog dari produk (dipanggil dari halaman edit).
+     * Menghapus satu foto galeri dari produk.
+     */
+    public function destroyImage($id)
+    {
+        $image = ProductImage::findOrFail($id);
+
+        if ($image->image_path && Storage::disk('public')->exists($image->image_path)) {
+            Storage::disk('public')->delete($image->image_path);
+        }
+
+        $image->delete();
+
+        return back()->with('success', 'Foto galeri berhasil dihapus.');
+    }
+
+    /**
+     * Menghapus satu video katalog dari produk.
      */
     public function destroyVideo($id)
     {
@@ -225,9 +230,6 @@ class ProductController extends Controller
         return back()->with('success', 'Video katalog berhasil dihapus.');
     }
 
-    /**
-     * Menghapus produk dari database beserta file gambar dan videonya.
-     */
     public function destroy($id)
     {
         $product = Product::with(['variants', 'images', 'videos'])->findOrFail($id);

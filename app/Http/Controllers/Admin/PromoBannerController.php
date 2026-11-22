@@ -19,8 +19,8 @@ class PromoBannerController extends Controller
             'subtitle'      => 'nullable|string|max:120',
             'title'         => 'required|string|max:150',
             'description'   => 'nullable|string|max:1000',
-            'button_text'   => 'required|string|max:80',
-            'button_url'    => 'required|string|max:255',
+            'button_text'   => 'nullable|string|max:80',
+            'button_url'    => 'nullable|string|max:255',
             'media_type'    => 'nullable|in:image,video',
             'image'         => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,webm|max:20480',
             'video'         => 'nullable|file|mimes:mp4,webm|max:20480',
@@ -47,11 +47,19 @@ class PromoBannerController extends Controller
             }
         }
 
-        // Jika bg_typography dikosongkan admin, otomatis ambil kata pertama dari title atau badge_text
+        // Jika bg_typography dikosongkan admin, otomatis ambil kata pertama dari badge_text atau title
         $rawTypography = trim((string) ($validated['bg_typography'] ?? ''));
         $validated['bg_typography'] = $rawTypography !== ''
             ? strtoupper($rawTypography)
             : strtoupper(Str::words($validated['badge_text'] ?: $validated['title'], 1, ''));
+
+        // Nilai fallback agar tetap aman jika admin mengosongkan tombol CTA
+        $validated['button_text'] = filled($validated['button_text'] ?? null)
+            ? trim($validated['button_text'])
+            : 'Belanja Sekarang';
+        $validated['button_url'] = filled($validated['button_url'] ?? null)
+            ? trim($validated['button_url'])
+            : '/produk';
 
         $validated['media_type'] = $detectedType;
         $validated['sort_order'] = $validated['sort_order'] ?? 1;
@@ -73,8 +81,8 @@ class PromoBannerController extends Controller
             'subtitle'      => 'nullable|string|max:120',
             'title'         => 'required|string|max:150',
             'description'   => 'nullable|string|max:1000',
-            'button_text'   => 'required|string|max:80',
-            'button_url'    => 'required|string|max:255',
+            'button_text'   => 'nullable|string|max:80',
+            'button_url'    => 'nullable|string|max:255',
             'media_type'    => 'nullable|in:image,video',
             'image'         => 'nullable|file|mimes:jpg,jpeg,png,webp,mp4,webm|max:20480',
             'video'         => 'nullable|file|mimes:mp4,webm|max:20480',
@@ -86,7 +94,6 @@ class PromoBannerController extends Controller
         $uploadedFile = $request->file('video') ?? $request->file('image');
 
         if ($uploadedFile) {
-            // Hapus file media lama dari storage jika ada
             $this->deleteStoredMedia($promo->image);
             $this->deleteStoredMedia($promo->video_path ?? null);
 
@@ -109,6 +116,13 @@ class PromoBannerController extends Controller
         $validated['bg_typography'] = $rawTypography !== ''
             ? strtoupper($rawTypography)
             : strtoupper(Str::words($validated['badge_text'] ?: $validated['title'], 1, ''));
+
+        $validated['button_text'] = filled($validated['button_text'] ?? null)
+            ? trim($validated['button_text'])
+            : 'Belanja Sekarang';
+        $validated['button_url'] = filled($validated['button_url'] ?? null)
+            ? trim($validated['button_url'])
+            : '/produk';
 
         $validated['sort_order'] = $validated['sort_order'] ?? 1;
         $validated['is_active']  = $request->boolean('is_active');

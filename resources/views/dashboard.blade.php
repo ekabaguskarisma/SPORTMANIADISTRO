@@ -1159,7 +1159,7 @@
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                         <div>
                             <h3 class="text-base font-black text-slate-900">Kelola Promo & Banner Beranda</h3>
-                            <p class="text-xs text-slate-500 mt-0.5">Buat dan atur postingan promo/diskon yang tampil di halaman beranda toko publik.</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Buat dan atur postingan promo/diskon pada posisi Hero Utama atau Showcase di beranda toko.</p>
                         </div>
                         <button type="button"
                                 @click="openNewPromo()"
@@ -1185,38 +1185,116 @@
                             </template>
 
                             <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Posisi Tampil (Placement) *</label>
+                                <select name="placement"
+                                        required
+                                        class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                                    <option value="hero" :selected="!editingPromo || editingPromo.placement === 'hero'">Hero Banner Utama (Atas Beranda)</option>
+                                    <option value="showcase" :selected="editingPromo && editingPromo.placement === 'showcase'">Showcase Promo (Etalase Sorotan)</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Urutan Tampil (Sort Order)</label>
+                                <input type="number"
+                                       name="sort_order"
+                                       min="1"
+                                       :value="editingPromo ? editingPromo.sort_order : 1"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none tabular-nums">
+                            </div>
+
+                            <div>
                                 <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Judul Promo *</label>
-                                <input type="text" name="title" :value="editingPromo ? editingPromo.title : ''" required placeholder="Contoh: Diskon Spesial Jersey Original 25%" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                                <input type="text"
+                                       name="title"
+                                       :value="editingPromo ? editingPromo.title : ''"
+                                       required
+                                       placeholder="Contoh: Diskon Spesial Jersey Original 25%"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Subjudul / Tagline Singkat (Opsional)</label>
+                                <input type="text"
+                                       name="subtitle"
+                                       :value="editingPromo ? editingPromo.subtitle : ''"
+                                       placeholder="Contoh: Koleksi Terbatas Musim 2026"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
                             </div>
 
                             <div>
                                 <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Label Badge / Tag (Opsional)</label>
-                                <input type="text" name="badge" :value="editingPromo ? editingPromo.badge : ''" placeholder="Contoh: FLASH SALE, NEW ARRIVAL, HEMAT 25%" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                                <input type="text"
+                                       name="badge_text"
+                                       :value="editingPromo ? editingPromo.badge_text : ''"
+                                       placeholder="Contoh: FLASH SALE, NEW ARRIVAL, HEMAT 25%"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                            </div>
+
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Teks Watermark Latar (Opsional)</label>
+                                <input type="text"
+                                       name="bg_typography"
+                                       maxlength="40"
+                                       :value="editingPromo ? editingPromo.bg_typography : ''"
+                                       placeholder="Otomatis dari kata pertama jika dikosongkan"
+                                       class="w-full uppercase bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
                             </div>
 
                             <div class="md:col-span-2">
                                 <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Deskripsi Promo</label>
-                                <textarea name="description" rows="2" :value="editingPromo ? editingPromo.description : ''" placeholder="Tuliskan detail promo, syarat & ketentuan, atau periode berlaku..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-red-500 outline-none"></textarea>
+                                <textarea name="description"
+                                          rows="2"
+                                          x-text="editingPromo ? editingPromo.description : ''"
+                                          placeholder="Tuliskan detail promo, syarat & ketentuan, atau periode berlaku..."
+                                          class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium text-slate-800 focus:ring-2 focus:ring-red-500 outline-none"></textarea>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Gambar Banner Promo</label>
-                                <input type="file" name="image" accept="image/*" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-red-600">
-                                <p class="text-[10px] text-slate-400 mt-1">Rekomendasi rasio landscape (16:9 atau 3:2), maks 2MB.</p>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Media Banner (Gambar / Video MP4/WebM)</label>
+                                <input type="file"
+                                       name="image"
+                                       accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-red-600">
+                                <p class="text-[10px] text-slate-400 mt-1">Format JPG, PNG, WEBP, MP4, atau WEBM (maks 20MB).</p>
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Link Tujuan Tombol (Opsional)</label>
-                                <input type="text" name="button_url" :value="editingPromo ? editingPromo.button_url : ''" placeholder="Contoh: /produk atau https://..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none">
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Keterangan Media / Caption (Opsional)</label>
+                                <input type="text"
+                                       name="image_caption"
+                                       :value="editingPromo ? editingPromo.image_caption : ''"
+                                       placeholder="Contoh: Jersey Home Edition 2026"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none">
                             </div>
 
                             <div>
-                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Teks Tombol CTA (Opsional)</label>
-                                <input type="text" name="button_text" :value="editingPromo ? editingPromo.button_text : ''" placeholder="Contoh: Belanja Sekarang" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none">
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Teks Tombol CTA *</label>
+                                <input type="text"
+                                       name="button_text"
+                                       required
+                                       :value="editingPromo ? editingPromo.button_text : 'Belanja Sekarang'"
+                                       placeholder="Contoh: Belanja Sekarang"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-bold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none">
                             </div>
 
-                            <div class="flex items-center gap-3 pt-4">
-                                <input type="checkbox" id="promo_is_active" name="is_active" value="1" :checked="editingPromo ? Boolean(editingPromo.is_active) : true" class="w-4 h-4 rounded text-red-600 focus:ring-red-500">
+                            <div>
+                                <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1.5">Link Tujuan Tombol *</label>
+                                <input type="text"
+                                       name="button_url"
+                                       required
+                                       :value="editingPromo ? editingPromo.button_url : '/produk'"
+                                       placeholder="Contoh: /produk atau https://..."
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none">
+                            </div>
+
+                            <div class="md:col-span-2 flex items-center gap-3 pt-2">
+                                <input type="checkbox"
+                                       id="promo_is_active"
+                                       name="is_active"
+                                       value="1"
+                                       :checked="editingPromo ? Boolean(editingPromo.is_active) : true"
+                                       class="w-4 h-4 rounded text-red-600 focus:ring-red-500">
                                 <label for="promo_is_active" class="font-bold text-slate-800">Tampilkan promo ini di beranda toko</label>
                             </div>
 
@@ -1233,41 +1311,65 @@
                         @forelse($promos as $promo)
                             @php
                                 $promoImgRaw = $promo->image ?? null;
+                                $promoVidRaw = $promo->video_path ?? null;
                                 $promoImgUrl = filled($promoImgRaw)
                                     ? (filter_var($promoImgRaw, FILTER_VALIDATE_URL) ? $promoImgRaw : asset('storage/' . ltrim($promoImgRaw, '/')))
                                     : null;
+                                $promoVidUrl = filled($promoVidRaw)
+                                    ? (filter_var($promoVidRaw, FILTER_VALIDATE_URL) ? $promoVidRaw : asset('storage/' . ltrim($promoVidRaw, '/')))
+                                    : null;
+                                $badgeLabel = $promo->badge_text ?? $promo->badge ?? '';
                                 $promoPayload = [
-                                    'id'          => $promo->id,
-                                    'title'       => $promo->title ?? '',
-                                    'badge'       => $promo->badge ?? '',
-                                    'description' => $promo->description ?? '',
-                                    'button_url'  => $promo->button_url ?? '',
-                                    'button_text' => $promo->button_text ?? '',
-                                    'is_active'   => (bool) ($promo->is_active ?? true),
-                                    'update_url'  => \Illuminate\Support\Facades\Route::has('admin.promos.update') ? route('admin.promos.update', $promo->id) : url('/admin/promos/' . $promo->id),
+                                    'id'            => $promo->id,
+                                    'placement'     => $promo->placement ?? 'hero',
+                                    'sort_order'    => $promo->sort_order ?? 1,
+                                    'title'         => $promo->title ?? '',
+                                    'subtitle'      => $promo->subtitle ?? '',
+                                    'badge_text'    => $badgeLabel,
+                                    'bg_typography' => $promo->bg_typography ?? '',
+                                    'description'   => $promo->description ?? '',
+                                    'image_caption' => $promo->image_caption ?? '',
+                                    'button_url'    => $promo->button_url ?? '/produk',
+                                    'button_text'   => $promo->button_text ?? 'Belanja Sekarang',
+                                    'is_active'     => (bool) ($promo->is_active ?? true),
+                                    'update_url'    => \Illuminate\Support\Facades\Route::has('admin.promos.update') ? route('admin.promos.update', $promo->id) : url('/admin/promos/' . $promo->id),
                                 ];
                             @endphp
                             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden flex flex-col justify-between">
                                 <div>
-                                    @if($promoImgUrl)
+                                    @if(($promo->media_type ?? 'image') === 'video' && $promoVidUrl)
+                                        <div class="h-40 bg-slate-900 overflow-hidden relative">
+                                            <video src="{{ $promoVidUrl }}" muted loop autoplay playsinline class="w-full h-full object-cover"></video>
+                                            <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                                                <span class="bg-slate-950/85 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg">{{ strtoupper($promo->placement ?? 'HERO') }}</span>
+                                                @if(filled($badgeLabel))
+                                                    <span class="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg shadow-xs">{{ $badgeLabel }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @elseif($promoImgUrl)
                                         <div class="h-40 bg-slate-100 overflow-hidden relative">
                                             <img src="{{ $promoImgUrl }}" alt="{{ $promo->title }}" class="w-full h-full object-cover">
-                                            @if(filled($promo->badge))
-                                                <span class="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-lg shadow-xs">{{ $promo->badge }}</span>
-                                            @endif
+                                            <div class="absolute top-3 left-3 flex flex-wrap gap-1.5">
+                                                <span class="bg-slate-950/85 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg">{{ strtoupper($promo->placement ?? 'HERO') }}</span>
+                                                @if(filled($badgeLabel))
+                                                    <span class="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg shadow-xs">{{ $badgeLabel }}</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     @else
                                         <div class="h-28 bg-gradient-to-r from-slate-900 to-slate-800 p-4 flex items-end justify-between">
-                                            @if(filled($promo->badge))
-                                                <span class="bg-red-600 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-lg">{{ $promo->badge }}</span>
-                                            @else
-                                                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Promo Beranda</span>
-                                            @endif
+                                            <div class="flex flex-wrap gap-1.5">
+                                                <span class="bg-white/15 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg">{{ strtoupper($promo->placement ?? 'HERO') }}</span>
+                                                @if(filled($badgeLabel))
+                                                    <span class="bg-red-600 text-white text-[9px] font-black uppercase px-2 py-1 rounded-lg">{{ $badgeLabel }}</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     @endif
 
                                     <div class="p-4">
-                                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                                        <div class="flex items-center justify-between gap-2 mb-1">
                                             <h4 class="font-black text-slate-900 text-sm line-clamp-1">{{ $promo->title }}</h4>
                                             @if($promo->is_active)
                                                 <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-md shrink-0">Aktif</span>
@@ -1275,7 +1377,13 @@
                                                 <span class="bg-slate-100 text-slate-500 border border-slate-200 text-[10px] font-black px-2 py-0.5 rounded-md shrink-0">Nonaktif</span>
                                             @endif
                                         </div>
+                                        @if(filled($promo->subtitle))
+                                            <p class="text-[11px] font-bold text-red-600 mb-1 line-clamp-1">{{ $promo->subtitle }}</p>
+                                        @endif
                                         <p class="text-xs text-slate-500 line-clamp-2">{{ $promo->description ?: 'Tanpa deskripsi tambahan.' }}</p>
+                                        <p class="text-[10px] font-semibold text-slate-400 mt-2">
+                                            Tombol: <strong class="text-slate-600">{{ $promo->button_text }}</strong> → <span class="underline">{{ $promo->button_url }}</span>
+                                        </p>
                                     </div>
                                 </div>
 
