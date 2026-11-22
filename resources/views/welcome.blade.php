@@ -1,6 +1,126 @@
 @php
     $products = $products ?? collect();
     $promoBanners = $promoBanners ?? collect();
+    $trustedBrands = $trustedBrands ?? [];
+    $heroSlides = $heroSlides ?? [];
+    $curatedCategories = $curatedCategories ?? [];
+    $featuredShowcase = $featuredShowcase ?? [];
+
+    $resolveHomeMedia = function (?string $raw, string $fallback): string {
+        if (blank($raw)) {
+            return $fallback;
+        }
+        $trimmed = trim($raw);
+        if (filter_var($trimmed, FILTER_VALIDATE_URL)) {
+            return $trimmed;
+        }
+        $cleanPath = ltrim(preg_replace('#^storage/#', '', $trimmed), '/');
+        return asset('storage/' . $cleanPath);
+    };
+
+    $defaultBrands = [
+        ['code' => 'SM', 'name' => 'Sport Mania', 'subtitle' => 'Eksklusif Apparel', 'logo' => null],
+        ['code' => 'NIKE', 'name' => 'Pro Combat', 'subtitle' => 'Authorized Partner', 'logo' => null],
+        ['code' => 'ADIDAS', 'name' => 'Performance', 'subtitle' => 'Official License', 'logo' => null],
+        ['code' => 'PUMA', 'name' => 'Speed Series', 'subtitle' => 'Verified Supplier', 'logo' => null],
+    ];
+    $brandsList = !empty($trustedBrands) ? array_values($trustedBrands) : $defaultBrands;
+
+    $defaultLookbookSlides = [
+        [
+            'tag' => '#1 Best Seller',
+            'subtitle' => 'Performance Apparel',
+            'title' => 'PRO RUNNING 2026',
+            'desc' => 'Dirancang dengan teknologi aerodinamis ringan untuk memaksimalkan kecepatan lari tanpa kompromi.',
+            'cta_text' => 'Jelajahi Koleksi',
+            'cta_url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=2070&auto=format&fit=crop',
+        ],
+        [
+            'tag' => '#2 High Performance',
+            'subtitle' => 'Maximum Strength',
+            'title' => 'ELITE TRAINING',
+            'desc' => 'Dukungan perlengkapan angkat beban profesional untuk menjaga stabilitas dan performa latihan maksimal.',
+            'cta_text' => 'Jelajahi Koleksi',
+            'cta_url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2070&auto=format&fit=crop',
+        ],
+    ];
+    $lookbookSlidesData = !empty($heroSlides)
+        ? array_values(array_map(function ($s, $i) use ($resolveHomeMedia, $defaultLookbookSlides) {
+            $fallbackSlide = $defaultLookbookSlides[$i % count($defaultLookbookSlides)];
+            return [
+                'tag' => $s['badge'] ?? $fallbackSlide['tag'],
+                'subtitle' => $s['kicker'] ?? $fallbackSlide['subtitle'],
+                'title' => $s['title'] ?? $fallbackSlide['title'],
+                'desc' => $s['description'] ?? $fallbackSlide['desc'],
+                'ctaText' => $s['cta_text'] ?? $fallbackSlide['cta_text'],
+                'ctaUrl' => $s['cta_url'] ?? $fallbackSlide['cta_url'],
+                'bgImage' => $resolveHomeMedia($s['image'] ?? '', $fallbackSlide['image']),
+            ];
+        }, $heroSlides, array_keys($heroSlides)))
+        : $defaultLookbookSlides;
+
+    $defaultCategories = [
+        [
+            'id' => 'women',
+            'name' => 'WOMEN',
+            'subtitle' => 'Elevated & Active',
+            'tagline' => 'Koleksi Aktif & Stylish',
+            'url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1518310383802-640c2de311b2?q=80&w=1000&auto=format&fit=crop',
+        ],
+        [
+            'id' => 'men',
+            'name' => 'MEN',
+            'subtitle' => 'Streetwear & Sport',
+            'tagline' => 'Performa Maskulin & Modern',
+            'url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?q=80&w=1000&auto=format&fit=crop',
+        ],
+        [
+            'id' => 'sports',
+            'name' => 'SPORTS',
+            'subtitle' => 'High Performance',
+            'tagline' => 'Gear Profesional untuk Atlit Juara',
+            'url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1000&auto=format&fit=crop',
+        ],
+        [
+            'id' => 'lifestyle',
+            'name' => 'LIFESTYLE',
+            'subtitle' => 'Daily Comfort',
+            'tagline' => 'Kenyamanan Maksimal Setiap Hari',
+            'url' => '#katalog',
+            'image' => 'https://images.unsplash.com/photo-1556906781-9a412961c28c?q=80&w=1000&auto=format&fit=crop',
+        ],
+    ];
+    $categoriesData = !empty($curatedCategories)
+        ? array_values(array_map(function ($c, $i) use ($resolveHomeMedia, $defaultCategories) {
+            $fallbackCat = $defaultCategories[$i % count($defaultCategories)];
+            $title = $c['title'] ?? $fallbackCat['name'];
+            $slugId = \Illuminate\Support\Str::slug($title) ?: $fallbackCat['id'];
+            return [
+                'id' => $slugId,
+                'name' => $title,
+                'subtitle' => $c['tag'] ?? $fallbackCat['subtitle'],
+                'tagline' => $c['subtitle'] ?? $fallbackCat['tagline'],
+                'url' => $c['url'] ?? '#katalog',
+                'image' => $resolveHomeMedia($c['image'] ?? '', $fallbackCat['image']),
+            ];
+        }, $curatedCategories, array_keys($curatedCategories)))
+        : $defaultCategories;
+
+    $showcaseData = [
+        'badge' => $featuredShowcase['badge'] ?? 'FEATURED SHOWCASE',
+        'title' => $featuredShowcase['title'] ?? '',
+        'description' => $featuredShowcase['description'] ?? '',
+        'cta_text' => $featuredShowcase['cta_text'] ?? '',
+        'cta_url' => $featuredShowcase['cta_url'] ?? '#katalog',
+        'image' => !empty($featuredShowcase['image'])
+            ? $resolveHomeMedia($featuredShowcase['image'], '')
+            : '',
+    ];
 
     $userAvatarUrl = null;
     if (\Illuminate\Support\Facades\Auth::check()) {
@@ -124,235 +244,28 @@
     <meta name="description" content="Sport Mania Distro - Pusat Sport Fashion & Apparel Original Terdepan di Malang.">
     <title>Sport Mania Distro | Premium Sportswear</title>
 
-    <!-- Data Metadata Produk & Promo Carousel (Aman dari karakter kutip / XSS) -->
-    <script>
-        window.__SM_PRODUCTS_META__ = {{ \Illuminate\Support\Js::from($productsMeta) }};
-        window.__SM_PROMO_SLIDES__ = {{ \Illuminate\Support\Js::from($promoSlidesData) }};
-    </script>
-
-    <!-- Tailwind CDN, Font Inter & Alpine.js -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+        'resources/css/pages/welcome.css',
+    ])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        [x-cloak] { display: none !important; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #fafafa; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
-    </style>
+    <script>
+        window.__SM_PRODUCTS_META__ = @json($productsMeta);
+        window.__SM_PROMO_SLIDES__ = @json($promoSlidesData);
+        window.__SM_LOOKBOOK_SLIDES__ = @json($lookbookSlidesData);
+        window.__SM_EDITORIAL_CATEGORIES__ = @json($categoriesData);
+        window.__SM_WELCOME_CONFIG__ = {
+            initialFilter: @json($initialFilter),
+            initialSearch: @json($initialSearch)
+        };
+    </script>
 </head>
-<body class="bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white"
-      x-data="{
-          mobileMenuOpen: false,
-          openKategori: false,
-          activeFilter: {{ \Illuminate\Support\Js::from($initialFilter) }},
-          sortBy: 'terbaru',
-          searchQuery: {{ \Illuminate\Support\Js::from($initialSearch) }},
-          selectedProduct: null,
-          selectedVariantIndex: 0,
-          qty: 1,
-          productsMeta: window.__SM_PRODUCTS_META__ || [],
-          toastTimer: null,
-
-          toast: {
-              show: false,
-              message: '',
-              type: 'success'
-          },
-
-          showToast(message, type = 'success') {
-              if (this.toastTimer) clearTimeout(this.toastTimer);
-              this.toast.message = message;
-              this.toast.type = type;
-              this.toast.show = true;
-              this.toastTimer = setTimeout(() => { this.toast.show = false; }, 3500);
-          },
-
-          cartItems: (() => {
-              try {
-                  const raw = JSON.parse(localStorage.getItem('cart_items'));
-                  return Array.isArray(raw) ? raw : [];
-              } catch (e) {
-                  return [];
-              }
-          })(),
-
-          syncCart() {
-              try {
-                  const raw = JSON.parse(localStorage.getItem('cart_items'));
-                  this.cartItems = Array.isArray(raw) ? raw : [];
-              } catch (e) {
-                  this.cartItems = [];
-              }
-          },
-
-          get cartCount() {
-              return this.cartItems.reduce((acc, item) => acc + Math.max(0, Number(item.qty || 0)), 0);
-          },
-
-          get sortedOrderMap() {
-              const list = [...this.productsMeta];
-              if (this.sortBy === 'terlaris') {
-                  list.sort((a, b) => b.sold - a.sold || b.rating - a.rating || a.index - b.index);
-              } else if (this.sortBy === 'rating') {
-                  list.sort((a, b) => b.rating - a.rating || b.reviews - b.reviews || b.sold - a.sold || a.index - b.index);
-              } else if (this.sortBy === 'harga_asc') {
-                  list.sort((a, b) => a.price - b.price || a.index - b.index);
-              } else if (this.sortBy === 'harga_desc') {
-                  list.sort((a, b) => b.price - a.price || a.index - b.index);
-              } else {
-                  list.sort((a, b) => a.index - b.index);
-              }
-              const map = {};
-              list.forEach((item, pos) => { map[item.id] = pos; });
-              return map;
-          },
-
-          getProductOrder(productId) {
-              return this.sortedOrderMap[productId] ?? 0;
-          },
-
-          matchesCategoryFilter(catSlug, prodText, isPromo) {
-              if (this.activeFilter === 'semua') return true;
-              if (this.activeFilter === 'promo') return Boolean(isPromo);
-              if (catSlug === this.activeFilter) return true;
-              if (['pakaian', 'sepatu', 'tas', 'aksesoris'].includes(this.activeFilter) && catSlug.includes(this.activeFilter)) {
-                  return true;
-              }
-              return this.matchesEditorialFilter(catSlug, prodText);
-          },
-
-          get visibleProductsCount() {
-              const q = this.searchQuery.toLowerCase().trim();
-              return this.productsMeta.filter(p => {
-                  const matchCat = this.matchesCategoryFilter(p.cat, p.search, p.promo);
-                  const matchSearch = !q || p.search.includes(q);
-                  return matchCat && matchSearch;
-              }).length;
-          },
-
-          openQuickView(product) {
-              this.selectedProduct = product;
-              this.qty = 1;
-              if (product.variants && product.variants.length > 0) {
-                  const firstAvailable = product.variants.findIndex(v => Number(v.stock) > 0);
-                  this.selectedVariantIndex = firstAvailable !== -1 ? firstAvailable : 0;
-              } else {
-                  this.selectedVariantIndex = 0;
-              }
-          },
-
-          selectVariant(idx) {
-              this.selectedVariantIndex = idx;
-              const max = this.maxAvailableStock;
-              if (max <= 0) {
-                  this.qty = 1;
-              } else if (this.qty > max) {
-                  this.qty = max;
-              }
-          },
-
-          get activeVariant() {
-              if (!this.selectedProduct || !this.selectedProduct.variants || this.selectedProduct.variants.length === 0) {
-                  return null;
-              }
-              return this.selectedProduct.variants[this.selectedVariantIndex] || null;
-          },
-
-          get maxAvailableStock() {
-              if (!this.selectedProduct) return 0;
-              if (this.activeVariant) return Math.max(0, Number(this.activeVariant.stock ?? 0));
-              return Math.max(0, Number(this.selectedProduct.stock ?? 0));
-          },
-
-          matchesEditorialFilter(catSlug, prodText) {
-              if (this.activeFilter === 'women') {
-                  return catSlug === 'women' || /\b(wanita|women|womens|legging|sports bra|hijab)\b/.test(prodText);
-              }
-              if (this.activeFilter === 'men') {
-                  return catSlug === 'men' || /\b(pria|men|mens|jersey|futsal|bola)\b/.test(prodText);
-              }
-              if (this.activeFilter === 'sports') {
-                  return catSlug === 'sports' || /\b(lari|running|gym|training|sepatu|futsal|basket)\b/.test(prodText);
-              }
-              if (this.activeFilter === 'lifestyle') {
-                  return catSlug === 'lifestyle' || /\b(hoodie|tas|ransel|casual|lifestyle|jaket)\b/.test(prodText);
-              }
-              return false;
-          },
-
-          scrollToCatalog() {
-              const el = document.getElementById('katalog');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-          },
-
-          resetFilters() {
-              this.activeFilter = 'semua';
-              this.searchQuery = '';
-          },
-
-          addToCart() {
-              if (!this.selectedProduct) return;
-
-              if (this.maxAvailableStock <= 0) {
-                  this.showToast('Maaf, stok varian ini sedang habis.', 'error');
-                  return;
-              }
-
-              const variant = this.activeVariant
-                  ? this.activeVariant
-                  : { id: null, size: 'All Size', color: '-', stock: this.maxAvailableStock };
-
-              const variantId = variant.id ?? null;
-              const sizeVal = variant.size || 'All Size';
-              const colorVal = variant.color || '-';
-              const unitPrice = Number(this.selectedProduct.discount_price || this.selectedProduct.price);
-              const maxStock = Number(variant.stock ?? this.maxAvailableStock);
-
-              const existingItem = this.cartItems.find(
-                  i => i.id === this.selectedProduct.id && (i.variant_id ?? null) === variantId && i.size === sizeVal && i.color === colorVal
-              );
-
-              const requestedQty = Math.max(1, parseInt(this.qty, 10) || 1);
-              const currentInCart = existingItem ? Number(existingItem.qty) : 0;
-
-              if (currentInCart + requestedQty > maxStock) {
-                  this.showToast(`Stok tidak mencukupi. Maksimal tersedia: ${maxStock} pcs (di keranjang: ${currentInCart} pcs).`, 'error');
-                  return;
-              }
-
-              if (existingItem) {
-                  existingItem.qty += requestedQty;
-                  existingItem.variant_id = variantId;
-                  existingItem.image = this.selectedProduct.image;
-                  existingItem.price = unitPrice;
-                  existingItem.maxStock = maxStock;
-              } else {
-                  this.cartItems.push({
-                      id: this.selectedProduct.id,
-                      variant_id: variantId,
-                      name: this.selectedProduct.name,
-                      category: this.selectedProduct.category || 'Umum',
-                      image: this.selectedProduct.image,
-                      size: sizeVal,
-                      color: colorVal,
-                      price: unitPrice,
-                      qty: requestedQty,
-                      maxStock: maxStock
-                  });
-              }
-
-              localStorage.setItem('cart_items', JSON.stringify(this.cartItems));
-              window.dispatchEvent(new CustomEvent('cart-updated', { detail: this.cartItems }));
-              this.showToast('Produk berhasil ditambahkan ke keranjang!', 'success');
-              this.selectedProduct = null;
-          }
-      }"
+<body class="welcome-page bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white"
+      x-data="welcomePage()"
       @cart-updated.window="syncCart()"
       @storage.window="if ($event.key === 'cart_items') syncCart()"
       @pageshow.window="syncCart()">
@@ -624,55 +537,7 @@
     @if(count($promoSlidesData) > 0)
         <section id="promo-showcase"
                  class="relative pt-12 pb-4 overflow-hidden select-none"
-                 x-data="{
-                     slides: {{ \Illuminate\Support\Js::from($promoSlidesData) }},
-                     current: 0,
-                     paused: false,
-                     timer: null,
-                     touchStartX: 0,
-                     get total() {
-                         return this.slides.length;
-                     },
-                     get prevIndex() {
-                         return (this.current - 1 + this.total) % this.total;
-                     },
-                     get nextIndex() {
-                         return (this.current + 1) % this.total;
-                     },
-                     next() {
-                         if (this.total <= 1) return;
-                         this.current = (this.current + 1) % this.total;
-                     },
-                     prev() {
-                         if (this.total <= 1) return;
-                         this.current = (this.current - 1 + this.total) % this.total;
-                     },
-                     goTo(idx) {
-                         this.current = idx;
-                     },
-                     startAuto() {
-                         if (this.total <= 1) return;
-                         this.stopAuto();
-                         this.timer = setInterval(() => {
-                             if (!this.paused) this.next();
-                         }, 5000);
-                     },
-                     stopAuto() {
-                         if (this.timer) clearInterval(this.timer);
-                     },
-                     handleTouchStart(e) {
-                         this.touchStartX = e.changedTouches[0].screenX;
-                     },
-                     handleTouchEnd(e) {
-                         const diff = e.changedTouches[0].screenX - this.touchStartX;
-                         if (Math.abs(diff) > 45) {
-                             diff < 0 ? this.next() : this.prev();
-                         }
-                     },
-                     init() {
-                         this.startAuto();
-                     }
-                 }"
+                 x-data="welcomePromoCarousel()"
                  @mouseenter="paused = true"
                  @mouseleave="paused = false"
                  @touchstart.passive="handleTouchStart($event)"
@@ -733,7 +598,7 @@
                              x-transition:leave-end="opacity-0"
                              class="absolute inset-0 w-full h-full">
 
-                            <!-- LAYER 0: Media Background (Wajib absolute inset-0 z-0) -->
+                            <!-- LAYER 0: Media Background -->
                             <template x-if="slide.mediaType === 'video'">
                                 <video :src="slide.mediaUrl"
                                        autoplay
@@ -966,7 +831,7 @@
                             <img src="{{ $imageUrl }}" alt="{{ $product->name }}" loading="lazy" class="w-full h-full object-cover mix-blend-multiply group-hover:scale-110 transition-transform duration-500 {{ $totalStock <= 0 ? 'opacity-50 grayscale' : '' }}">
                         </a>
                         <button type="button"
-                                @click.stop="openQuickView({{ \Illuminate\Support\Js::from($quickViewPayload) }})"
+                                @click.stop='openQuickView(@json($quickViewPayload))'
                                 title="Pilih Cepat"
                                 aria-label="Pilih cepat {{ $product->name }}"
                                 class="flex items-center gap-1.5 absolute bottom-2.5 right-2.5 sm:right-auto sm:bottom-3 sm:left-1/2 sm:-translate-x-1/2 bg-gray-900/90 hover:bg-red-600 text-white text-[10px] font-black uppercase tracking-wider p-2 sm:px-3.5 sm:py-2 rounded-xl sm:opacity-0 sm:translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 shadow-lg backdrop-blur-sm whitespace-nowrap">
@@ -1158,7 +1023,7 @@
         </div>
     </div>
 
-    <!-- Section 3D Brand Showcase / Partners -->
+    <!-- Section 3D Brand Showcase / Partners (Dinamis dari Admin + Support Logo Gambar) -->
     <section class="py-24 bg-gray-950 text-white overflow-hidden relative border-t border-gray-900">
         <div class="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-red-600/10 blur-[140px] pointer-events-none rounded-full"></div>
 
@@ -1177,85 +1042,37 @@
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-                <div class="bg-gradient-to-b from-gray-900 to-gray-900/50 backdrop-blur-xl border border-gray-800/80 p-6 sm:p-8 rounded-3xl text-center transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-red-600/10 group relative overflow-hidden">
-                    <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-800 group-hover:border-red-500/50 transition-colors shadow-inner">
-                        <span class="text-xl sm:text-2xl font-black text-red-500 italic tracking-tighter">SM</span>
-                    </div>
-                    <h4 class="font-black text-xs sm:text-sm uppercase tracking-wider text-white">Sport Mania</h4>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium">Eksklusif Apparel</p>
-                </div>
+                @foreach($brandsList as $brand)
+                    @php
+                        $brandLogoUrl = $resolveHomeMedia($brand['logo'] ?? '', '');
+                    @endphp
+                    <div class="bg-gradient-to-b from-gray-900 to-gray-900/50 backdrop-blur-xl border border-gray-800/80 p-6 sm:p-8 rounded-3xl text-center transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-red-600/10 group relative overflow-hidden">
+                        <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                <div class="bg-gradient-to-b from-gray-900 to-gray-900/50 backdrop-blur-xl border border-gray-800/80 p-6 sm:p-8 rounded-3xl text-center transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-red-600/10 group relative overflow-hidden">
-                    <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-800 group-hover:border-red-500/50 transition-colors shadow-inner">
-                        <span class="text-lg sm:text-xl font-black text-white italic tracking-widest">NIKE</span>
-                    </div>
-                    <h4 class="font-black text-xs sm:text-sm uppercase tracking-wider text-white">Pro Combat</h4>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium">Authorized Partner</p>
-                </div>
+                        @if(filled($brandLogoUrl))
+                            <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-white rounded-2xl flex items-center justify-center p-2.5 sm:p-3 border border-gray-200 group-hover:border-red-500/60 transition-colors shadow-inner overflow-hidden">
+                                <img src="{{ $brandLogoUrl }}"
+                                     alt="{{ $brand['name'] ?? 'Brand Partner' }}"
+                                     loading="lazy"
+                                     class="max-w-full max-h-full object-contain group-hover:scale-105 transition-transform duration-300">
+                            </div>
+                        @else
+                            <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-800 group-hover:border-red-500/50 transition-colors shadow-inner">
+                                <span class="text-lg sm:text-xl font-black text-red-500 italic tracking-tighter truncate px-2">{{ $brand['code'] ?? 'SM' }}</span>
+                            </div>
+                        @endif
 
-                <div class="bg-gradient-to-b from-gray-900 to-gray-900/50 backdrop-blur-xl border border-gray-800/80 p-6 sm:p-8 rounded-3xl text-center transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-red-600/10 group relative overflow-hidden">
-                    <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-800 group-hover:border-red-500/50 transition-colors shadow-inner">
-                        <span class="text-base sm:text-lg font-black text-white italic tracking-wide">ADIDAS</span>
+                        <h4 class="font-black text-xs sm:text-sm uppercase tracking-wider text-white">{{ $brand['name'] ?? '' }}</h4>
+                        <p class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium">{{ $brand['subtitle'] ?? ($brand['description'] ?? '') }}</p>
                     </div>
-                    <h4 class="font-black text-xs sm:text-sm uppercase tracking-wider text-white">Performance</h4>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium">Official License</p>
-                </div>
-
-                <div class="bg-gradient-to-b from-gray-900 to-gray-900/50 backdrop-blur-xl border border-gray-800/80 p-6 sm:p-8 rounded-3xl text-center transform hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 shadow-2xl hover:shadow-red-600/10 group relative overflow-hidden">
-                    <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-red-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                    <div class="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-gray-950 rounded-2xl flex items-center justify-center border border-gray-800 group-hover:border-red-500/50 transition-colors shadow-inner">
-                        <span class="text-lg sm:text-xl font-black text-white italic tracking-wider">PUMA</span>
-                    </div>
-                    <h4 class="font-black text-xs sm:text-sm uppercase tracking-wider text-white">Speed Series</h4>
-                    <p class="text-[10px] sm:text-xs text-gray-400 mt-1 font-medium">Verified Supplier</p>
-                </div>
+                @endforeach
             </div>
         </div>
     </section>
 
-    <!-- Section Full-Screen Lookbook Carousel -->
+    <!-- Section Full-Screen Lookbook Carousel (Dinamis dari Admin) -->
     <section class="relative w-full h-[85vh] sm:h-[90vh] bg-gray-950 text-white overflow-hidden flex items-center justify-center"
-             x-data="{
-                 activeSlide: 0,
-                 paused: false,
-                 slides: [
-                     {
-                         title: 'PRO RUNNING 2026',
-                         subtitle: 'PERFORMANCE APPAREL',
-                         desc: 'Dirancang dengan teknologi aerodinamis ringan untuk memaksimalkan kecepatan lari tanpa kompromi.',
-                         bgImage: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1600&auto=format&fit=crop',
-                         tag: '01 / BEST SELLER'
-                     },
-                     {
-                         title: 'STREET GYM EDIT',
-                         subtitle: 'URBAN SPORTSWEAR',
-                         desc: 'Kombinasi bahan dry-fit premium yang menyerap keringat dengan gaya urban streetwear yang trendi.',
-                         bgImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1600&auto=format&fit=crop',
-                         tag: '02 / NEW COLLECTION'
-                     },
-                     {
-                         title: 'ELITE TRAINING',
-                         subtitle: 'MAXIMUM STRENGTH',
-                         desc: 'Dukungan perlengkapan angkat beban profesional untuk menjaga stabilitas dan performa latihan maksimal.',
-                         bgImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1600&auto=format&fit=crop',
-                         tag: '03 / HIGH PERFORMANCE'
-                     }
-                 ],
-                 next() {
-                     this.activeSlide = (this.activeSlide + 1) % this.slides.length;
-                 },
-                 prev() {
-                     this.activeSlide = (this.activeSlide - 1 + this.slides.length) % this.slides.length;
-                 },
-                 init() {
-                     setInterval(() => {
-                         if (!this.paused) this.next();
-                     }, 6500);
-                 }
-             }"
+             x-data="welcomeLookbookCarousel()"
              @mouseenter="paused = true"
              @mouseleave="paused = false">
 
@@ -1293,8 +1110,10 @@
                             <p class="text-gray-300 text-sm sm:text-base font-medium leading-relaxed max-w-lg drop-shadow-md" x-text="slide.desc"></p>
 
                             <div class="pt-4 flex items-center gap-4">
-                                <a href="#katalog" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest px-8 py-4 rounded-xl transition-all duration-300 shadow-xl shadow-red-600/40 hover:scale-105 active:scale-95 flex items-center gap-2">
-                                    <span>Jelajahi Koleksi</span>
+                                <a :href="slide.ctaUrl || '#katalog'"
+                                   @click="if((slide.ctaUrl || '#katalog') === '#katalog') { $event.preventDefault(); scrollToCatalog(); }"
+                                   class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-widest px-8 py-4 rounded-xl transition-all duration-300 shadow-xl shadow-red-600/40 hover:scale-105 active:scale-95 flex items-center gap-2">
+                                    <span x-text="slide.ctaText || 'Jelajahi Koleksi'"></span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                 </a>
                             </div>
@@ -1323,41 +1142,9 @@
         </div>
     </section>
 
-    <!-- Section Editorial Category Grid & Interactive Showcase -->
+    <!-- Section Editorial Category Grid & Interactive Showcase (Dinamis dari Admin) -->
     <section class="py-24 bg-white text-gray-900 overflow-hidden relative border-t border-gray-100"
-             x-data="{
-                 activeCategory: 'women',
-                 categories: [
-                     {
-                         id: 'women',
-                         name: 'WOMEN',
-                         subtitle: 'Elegance & Active',
-                         image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop',
-                         tagline: 'Eksklusif Koleksi Wanita Aktif & Stylish'
-                     },
-                     {
-                         id: 'men',
-                         name: 'MEN',
-                         subtitle: 'Streetwear & Sport',
-                         image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop',
-                         tagline: 'Performa Maskulin & Urban Fashion'
-                     },
-                     {
-                         id: 'sports',
-                         name: 'SPORTS',
-                         subtitle: 'High Performance',
-                         image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1000&auto=format&fit=crop',
-                         tagline: 'Gear Profesional untuk Atlet Juara'
-                     },
-                     {
-                         id: 'lifestyle',
-                         name: 'LIFESTYLE',
-                         subtitle: 'Daily Comfort',
-                         image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1000&auto=format&fit=crop',
-                         tagline: 'Kenyamanan Maksimal Setiap Hari'
-                     }
-                 ]
-             }">
+             x-data="welcomeEditorialCategories()">
 
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
             <div class="text-center space-y-3">
@@ -1409,20 +1196,33 @@
                          class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
 
                         <div class="space-y-6">
-                            <span class="inline-block bg-red-600 text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-lg shadow-md">Featured Showcase</span>
-                            <h3 class="text-3xl sm:text-5xl font-black uppercase tracking-tight" x-text="'Koleksi Eksklusif ' + cat.name"></h3>
-                            <p class="text-gray-400 text-sm sm:text-base font-medium leading-relaxed" x-text="cat.tagline + '. Dirancang khusus dengan standar material premium untuk memberikan kenyamanan dan estetika visual tingkat tinggi.'"></p>
+                            <span class="inline-block bg-red-600 text-white text-[10px] font-black uppercase tracking-widest px-3.5 py-1.5 rounded-lg shadow-md">
+                                {{ $showcaseData['badge'] ?: 'Featured Showcase' }}
+                            </span>
+                            <h3 class="text-3xl sm:text-5xl font-black uppercase tracking-tight"
+                                x-text="{{ json_encode($showcaseData['title']) }} || ('Koleksi Eksklusif ' + cat.name)"></h3>
+                            <p class="text-gray-400 text-sm sm:text-base font-medium leading-relaxed"
+                               x-text="{{ json_encode($showcaseData['description']) }} || (cat.tagline + '. Dirancang khusus dengan standar material premium untuk memberikan kenyamanan dan estetika visual tingkat tinggi.')"></p>
 
                             <div class="pt-2">
-                                <a href="#katalog" @click="activeFilter = cat.id; searchQuery = ''; scrollToCatalog()" class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-4 rounded-xl transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95">
-                                    <span>Belanja Kategori <span x-text="cat.name"></span></span>
+                                <a :href="{{ json_encode($showcaseData['cta_url'] ?: '#katalog') }}"
+                                   @click="activeFilter = cat.id; searchQuery = ''; scrollToCatalog()"
+                                   class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs uppercase tracking-wider px-8 py-4 rounded-xl transition-all shadow-lg shadow-red-600/30 hover:scale-105 active:scale-95">
+                                    <span>
+                                        <template x-if="{{ json_encode($showcaseData['cta_text']) }}">
+                                            <span x-text="{{ json_encode($showcaseData['cta_text']) }}"></span>
+                                        </template>
+                                        <template x-if="!{{ json_encode($showcaseData['cta_text']) }}">
+                                            <span>Belanja Kategori <span x-text="cat.name"></span></span>
+                                        </template>
+                                    </span>
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                                 </a>
                             </div>
                         </div>
 
                         <div class="w-full aspect-[16/10] bg-gray-900 rounded-2xl overflow-hidden relative shadow-2xl border border-gray-800">
-                            <img :src="cat.image" :alt="cat.name" loading="lazy" class="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700">
+                            <img :src="{{ json_encode($showcaseData['image']) }} || cat.image" :alt="cat.name" loading="lazy" class="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700">
                             <div class="absolute inset-0 bg-gradient-to-t from-gray-950/80 via-transparent to-transparent"></div>
                             <div class="absolute bottom-4 left-4 right-4 flex justify-between items-center text-xs font-bold text-gray-300">
                                 <span class="bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg border border-white/10 text-[11px]" x-text="cat.subtitle + ' Lookbook'"></span>
@@ -1569,71 +1369,7 @@
     </section>
 
     <!-- FOOTER SECTION -->
-    <footer x-data="{
-                newsletterEmail: '',
-                newsletterPref: '',
-                newsletterSuccess: false,
-                infoModal: {
-                    open: false,
-                    badge: '',
-                    title: '',
-                    content: ''
-                },
-                pages: {
-                    faq: {
-                        badge: 'Pusat Bantuan',
-                        title: 'Bantuan & Pertanyaan Umum (FAQ)',
-                        content: '1. Semua produk di Sport Mania Distro dijamin 100% original & lokal pilihan.\n2. Pemesanan diproses setiap hari pukul 09.00 – 20.00 WIB.\n3. Setelah checkout, silakan unggah bukti pembayaran di menu Pesanan Saya atau klik Konfirmasi WhatsApp agar admin segera memverifikasi pembayaran dan menginput nomor resi pengiriman.'
-                    },
-                    retur: {
-                        badge: 'Garansi Layanan',
-                        title: 'Kebijakan Pengembalian & Tukar Ukuran',
-                        content: 'Pelanggan dapat mengajukan penukaran ukuran (size) atau pengembalian barang maksimal 3x24 jam setelah paket diterima dengan syarat: label/hangtag masih terpasang utuh, produk belum dicuci, dan menyertakan video unboxing.'
-                    },
-                    ongkir: {
-                        badge: 'Informasi Pengiriman',
-                        title: 'Pengiriman & Promo Gratis Ongkir',
-                        content: 'Kami mendukung pengiriman reguler melalui JNE REG dan SiCepat ke seluruh Indonesia, serta layanan Ambil di Store (Gratis) untuk area Kota Malang. Dapatkan GRATIS ONGKIR seluruh Pulau Jawa untuk minimal belanja Rp 250.000.'
-                    },
-                    tentang: {
-                        badge: 'Profil Toko',
-                        title: 'Tentang Sport Mania Distro',
-                        content: 'Sport Mania Distro adalah pusat Sport Fashion & Apparel berbasis di Malang, Jawa Timur. Kami menghadirkan koleksi jersey, sepatu lari, tas olahraga, dan aksesori latihan berkualitas tinggi untuk menunjang performa maupun gaya harian Anda.'
-                    },
-                    syarat: {
-                        badge: 'Ketentuan Layanan',
-                        title: 'Persyaratan & Ketentuan',
-                        content: 'Stok produk diperbarui secara real-time berdasarkan varian ukuran dan warna. Pesanan berstatus Pending yang belum dikonfirmasi pembayarannya dalam 1x24 jam dapat dibatalkan secara otomatis oleh sistem atau admin.'
-                    },
-                    privasi: {
-                        badge: 'Keamanan Data',
-                        title: 'Kebijakan Privasi Pelanggan',
-                        content: 'Data pribadi seperti nama, nomor WhatsApp, email, dan alamat pengiriman hanya digunakan untuk keperluan pemrosesan transaksi, pengiriman paket, dan layanan pelanggan Sport Mania Distro.'
-                    },
-                    app: {
-                        badge: 'Segera Hadir',
-                        title: 'Aplikasi Mobile Sport Mania',
-                        content: 'Aplikasi Android & iOS Sport Mania Distro sedang dalam tahap pengembangan. Untuk saat ini, nikmati pengalaman belanja responsif langsung melalui browser perangkat seluler maupun desktop Anda.'
-                    }
-                },
-                openInfo(key) {
-                    if (this.pages[key]) {
-                        this.infoModal = {
-                            open: true,
-                            badge: this.pages[key].badge,
-                            title: this.pages[key].title,
-                            content: this.pages[key].content
-                        };
-                    }
-                },
-                submitNewsletter(pref = 'Umum') {
-                    if (!this.newsletterEmail.trim()) return;
-                    this.newsletterPref = pref;
-                    this.newsletterSuccess = true;
-                    this.newsletterEmail = '';
-                    setTimeout(() => { this.newsletterSuccess = false; }, 4000);
-                }
-            }"
+    <footer x-data="welcomeFooter()"
             class="bg-[#09090b] text-white pt-24 pb-12 rounded-t-[3rem] -mt-12 relative z-30 shadow-[0_-20px_50px_rgba(0,0,0,0.2)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-16 border-b border-gray-800/60">

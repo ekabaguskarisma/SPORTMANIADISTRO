@@ -16,6 +16,7 @@ window.productDetail = function (config = {}) {
         qty: 1,
         sizeGuideOpen: false,
         toast: { show: false, message: "", type: "success" },
+        _toastTimer: null,
 
         triggerToast(message, type = "success") {
             this.toast.message = message;
@@ -42,9 +43,13 @@ window.productDetail = function (config = {}) {
             return (
                 this.variants.find((v) => {
                     const colorMatch =
-                        !this.hasColors || v.color === this.selectedColor;
+                        !this.hasColors ||
+                        !this.selectedColor ||
+                        v.color === this.selectedColor;
                     const sizeMatch =
-                        !this.hasSizes || v.size === this.selectedSize;
+                        !this.hasSizes ||
+                        !this.selectedSize ||
+                        v.size === this.selectedSize;
                     return colorMatch && sizeMatch;
                 }) || null
             );

@@ -16,10 +16,11 @@ use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\Auth\SocialiteController;
 use App\Http\Controllers\Admin\PromoBannerController;
 use App\Http\Controllers\Admin\PosController;
+use App\Http\Controllers\Admin\HomeSectionController;
 use App\Http\Controllers\StoreFeatureController;
 
 // ==========================================
-// VIEW COMPOSER: OTOMATIS KIRIM PROMO AKTIF KE ETALASE (welcome.blade.php)
+// VIEW COMPOSER: OTOMATIS KIRIM PROMO AKTIF & SECTION BERANDA KE ETALASE (welcome.blade.php)
 // ==========================================
 View::composer('welcome', function ($view) {
     $promoBanners = collect();
@@ -40,7 +41,34 @@ View::composer('welcome', function ($view) {
         $promoBanners = $query->latest()->get();
     }
 
-    $view->with('promoBanners', $promoBanners);
+    $trustedBrands = [];
+    $heroSlides = [];
+    $curatedCategories = [];
+    $featuredShowcase = [];
+
+    if (Schema::hasTable('site_settings') && class_exists(\App\Models\SiteSetting::class)) {
+        $rawBrands = \App\Models\SiteSetting::getJson('home_trusted_brands', []);
+        $trustedBrands = collect($rawBrands)->map(function ($brand) {
+            return array_merge([
+                'code'        => '',
+                'name'        => '',
+                'description' => '',
+                'logo'        => null,
+            ], is_array($brand) ? $brand : []);
+        })->values()->all();
+
+        $heroSlides = \App\Models\SiteSetting::getJson('home_hero_slides', []);
+        $curatedCategories = \App\Models\SiteSetting::getJson('home_curated_categories', []);
+        $featuredShowcase = \App\Models\SiteSetting::getJson('home_featured_showcase', []);
+    }
+
+    $view->with([
+        'promoBanners'      => $promoBanners,
+        'trustedBrands'     => $trustedBrands,
+        'heroSlides'        => $heroSlides,
+        'curatedCategories' => $curatedCategories,
+        'featuredShowcase'  => $featuredShowcase,
+    ]);
 });
 
 
@@ -154,8 +182,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     })->name('dashboard');
 
     // Kasir Offline Store (POS)
-    Route::post('/pos', [PosController::class, 'store']);
-    Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.store');
+    Route::post('/pos', [PosController::class, 'store'])->name('pos.store');
+    Route::post('/pos/checkout', [PosController::class, 'store'])->name('pos.checkout');
 
     // Manajemen Produk
     Route::get('/products', [AdminProductController::class, 'index'])->name('products.index');
@@ -180,6 +208,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::put('/promos/{promo}', [PromoBannerController::class, 'update'])->name('promos.update');
     Route::patch('/promos/{promo}/toggle', [PromoBannerController::class, 'toggle'])->name('promos.toggle');
     Route::delete('/promos/{promo}', [PromoBannerController::class, 'destroy'])->name('promos.destroy');
+
+    // Pengaturan Bagian Beranda (Trusted Brands, Hero Slider, Curated Categories, Featured Showcase)
+    Route::get('/home-sections', [HomeSectionController::class, 'index'])->name('home-sections.index');
+    Route::put('/home-sections', [HomeSectionController::class, 'update'])->name('home-sections.update');
 
     // Manajemen Voucher Admin
     Route::post('/vouchers', [StoreFeatureController::class, 'storeVoucher'])->name('vouchers.store');

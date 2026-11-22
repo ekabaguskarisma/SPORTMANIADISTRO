@@ -1,0 +1,7 @@
+[x-cloak] {
+    display: none !important;
+}
+
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+}

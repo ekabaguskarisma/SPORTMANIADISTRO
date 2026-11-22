@@ -4,113 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tambah Produk - Sport Mania Distro</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
-        [x-cloak] { display: none !important; }
-        .tabular-nums { font-variant-numeric: tabular-nums; }
-    </style>
+    @vite([
+        'resources/css/app.css',
+        'resources/js/app.js',
+        'resources/css/pages/admin-product-form.css',
+    ])
+    <script>
+        window.__SM_PRODUCT_FORM_CONFIG__ = {
+            price: @json((int) old('price', 0)),
+            hpp: @json((int) old('hpp', 0)),
+            discountPrice: @json((int) old('discount_price', 0)),
+            defaultColor: 'Hitam',
+            variants: []
+        };
+    </script>
 </head>
 <body class="bg-slate-50/90 text-slate-800 antialiased selection:bg-red-600 selection:text-white"
-      x-data="{
-          variants: [{ id: Date.now(), size: '', color: '', stock: 0 }],
-          defaultColor: 'Hitam',
-          price: {{ (int) old('price', 0) }},
-          hpp: {{ (int) old('hpp', 0) }},
-          discountPrice: {{ (int) old('discount_price', 0) }},
-          coverPreview: null,
-          galleryPreviews: [],
-          videoPreviews: [],
-
-          get totalStock() {
-              return this.variants.reduce((sum, v) => sum + (parseInt(v.stock) || 0), 0);
-          },
-
-          get effectivePrice() {
-              const p = parseFloat(this.price) || 0;
-              const d = parseFloat(this.discountPrice) || 0;
-              return (d > 0 && d < p) ? d : p;
-          },
-
-          get estimatedProfitPerUnit() {
-              const h = parseFloat(this.hpp) || 0;
-              if (h <= 0) return 0;
-              return this.effectivePrice - h;
-          },
-
-          get estimatedMarginPercent() {
-              const h = parseFloat(this.hpp) || 0;
-              if (h <= 0 || this.effectivePrice <= 0) return null;
-              return Math.round(((this.effectivePrice - h) / this.effectivePrice) * 100);
-          },
-
-          get discountPercent() {
-              const p = parseFloat(this.price) || 0;
-              const d = parseFloat(this.discountPrice) || 0;
-              if (p > 0 && d > 0 && d < p) {
-                  return Math.round(((p - d) / p) * 100);
-              }
-              return 0;
-          },
-
-          formatRupiah(num) {
-              return 'Rp ' + (parseInt(num) || 0).toLocaleString('id-ID');
-          },
-
-          applyPreset(type) {
-              const presets = {
-                  clothing: ['S', 'M', 'L', 'XL', 'XXL'],
-                  shoes: ['39', '40', '41', '42', '43', '44'],
-                  accessory: ['All Size']
-              };
-              const sizes = presets[type] || [];
-              const baseTime = Date.now();
-              this.variants = sizes.map((sz, idx) => ({
-                  id: baseTime + idx,
-                  size: sz,
-                  color: this.defaultColor || 'Hitam',
-                  stock: 5
-              }));
-          },
-
-          previewCover(event) {
-              const file = event.target.files[0];
-              this.coverPreview = file ? URL.createObjectURL(file) : null;
-          },
-
-          previewGallery(event) {
-              this.galleryPreviews = Array.from(event.target.files).map(file => URL.createObjectURL(file));
-          },
-
-          previewVideos(event) {
-              this.videoPreviews.forEach(item => URL.revokeObjectURL(item.url));
-              this.videoPreviews = Array.from(event.target.files).map(file => ({
-                  file: file,
-                  name: file.name,
-                  sizeMB: (file.size / (1024 * 1024)).toFixed(1),
-                  url: URL.createObjectURL(file)
-              }));
-          },
-
-          removeVideoPreview(idx) {
-              if (this.videoPreviews[idx]) {
-                  URL.revokeObjectURL(this.videoPreviews[idx].url);
-              }
-              this.videoPreviews.splice(idx, 1);
-              if (this.$refs.videoInput) {
-                  const dt = new DataTransfer();
-                  this.videoPreviews.forEach(item => dt.items.add(item.file));
-                  this.$refs.videoInput.files = dt.files;
-              }
-          },
-
-          clearAllVideoPreviews() {
-              this.videoPreviews.forEach(item => URL.revokeObjectURL(item.url));
-              this.videoPreviews = [];
-              if (this.$refs.videoInput) {
-                  this.$refs.videoInput.value = '';
-              }
-          }
-      }">
+      x-data="adminProductForm()">
 
     <!-- Top Navigation Bar -->
     <header class="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-slate-800 text-white">
@@ -250,7 +160,7 @@
                             <p class="text-[11px] text-slate-500 mt-0.5">Pilih preset cepat berdasarkan jenis barang atau tambah baris manual.</p>
                         </div>
                         <button type="button"
-                                @click="variants.push({ id: Date.now(), size: '', color: defaultColor || '', stock: 0 })"
+                                @click="addVariantRow()"
                                 class="bg-slate-900 hover:bg-red-600 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-sm">
                             + Tambah Baris
                         </button>
@@ -298,7 +208,7 @@
                                            class="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg p-2.5 mt-1 tabular-nums focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500">
                                 </div>
                                 <button type="button"
-                                        @click="if(variants.length > 1) variants.splice(index, 1)"
+                                        @click="removeVariantRow(index)"
                                         x-show="variants.length > 1"
                                         class="p-2.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg transition"
                                         title="Hapus Varian">
