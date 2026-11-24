@@ -17,15 +17,39 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        // Mengambil produk beserta relasi kategori, varian, dan galeri foto
         $query = Product::with(['category', 'variants', 'images']);
 
-        if ($request->has('category') && $request->category != 'semua') {
-            $query->where('category_id', $request->category);
+        // Filter Kategori & Promo Spesial
+        if ($request->filled('category') && strtolower($request->category) !== 'semua') {
+            $categoryParam = strtolower(trim($request->category));
+
+            if ($categoryParam === 'promo') {
+                $query->whereNotNull('discount_price')
+                      ->where('discount_price', '>', 0);
+            } elseif (is_numeric($categoryParam)) {
+                $query->where('category_id', (int) $categoryParam);
+            } else {
+                $query->whereHas('category', function ($q) use ($categoryParam) {
+                    $q->where('name', 'like', '%' . $categoryParam . '%');
+                });
+            }
         }
 
-        if ($request->has('search') && !empty($request->search)) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+        if ($request->boolean('promo')) {
+            $query->whereNotNull('discount_price')
+                  ->where('discount_price', '>', 0);
+        }
+
+        // Pencarian Kata Kunci (nama produk, deskripsi, dan nama kategori)
+        if ($request->filled('search')) {
+            $keyword = trim($request->search);
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'like', '%' . $keyword . '%')
+                  ->orWhere('description', 'like', '%' . $keyword . '%')
+                  ->orWhereHas('category', function ($catQuery) use ($keyword) {
+                      $catQuery->where('name', 'like', '%' . $keyword . '%');
+                  });
+            });
         }
 
         $products = $query->latest()->get();
@@ -39,10 +63,9 @@ class ProductController extends Controller
      */
     public function show($id)
     {
-        // 1. Ambil data produk utama beserta relasi lengkap (Ditambahkan 'reviews.user' di sini)
         $produk = Product::with(['category', 'variants', 'images', 'reviews.user'])->findOrFail($id);
+        $categories = Category::all();
 
-        // 2. Cari produk rekomendasi dari KATEGORI YANG SAMA
         $relatedProducts = Product::with(['variants', 'images'])
                                   ->where('category_id', $produk->category_id)
                                   ->where('id', '!=', $id)
@@ -50,14 +73,13 @@ class ProductController extends Controller
                                   ->take(4)
                                   ->get();
 
-        // 3. (FALLBACK) Jika produk di kategori yang sama kosong
         $relatedProducts = $relatedProducts->count() > 0 ? $relatedProducts : Product::with(['variants', 'images'])
                                                                                    ->where('id', '!=', $id)
                                                                                    ->inRandomOrder()
                                                                                    ->take(4)
                                                                                    ->get();
 
-        return view('produk.show', compact('produk', 'relatedProducts'));
+        return view('produk.show', compact('produk', 'relatedProducts', 'categories'));
     }
 
     /**
@@ -66,7 +88,7 @@ class ProductController extends Controller
     public function create()
     {
         $categories = Category::all();
-        
+
         return view('admin.produk.create', compact('categories'));
     }
 

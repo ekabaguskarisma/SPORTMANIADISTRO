@@ -3,9 +3,17 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-20">
             <div class="flex">
-                <!-- Logo Sport Mania -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : url('/') }}" class="text-2xl font-black tracking-tighter uppercase italic hover:opacity-80 transition">
+                <!-- Tombol Kembali & Logo Sport Mania -->
+                <div class="shrink-0 flex items-center gap-2.5 sm:gap-3">
+                    <button type="button"
+                            onclick="if (window.history.length > 1 && document.referrer.includes(window.location.host)) { window.history.back(); } else { window.location.href = '{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : url('/') }}'; }"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-900 text-gray-800 hover:text-white text-xs font-black transition active:scale-95"
+                            title="Kembali">
+                        <span>←</span>
+                        <span>Kembali</span>
+                    </button>
+
+                    <a href="{{ Auth::user()->role === 'admin' ? route('admin.dashboard') : url('/') }}" class="text-xl sm:text-2xl font-black tracking-tighter uppercase italic hover:opacity-80 transition">
                         <span class="text-red-600">SPORT</span><span class="text-gray-900">MANIA</span>
                     </a>
                 </div>
@@ -73,10 +81,11 @@
                         @endif
 
                         <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
+                        <form method="POST" action="{{ route('logout') }}" onsubmit="localStorage.removeItem('cart_items')">
                             @csrf
                             <x-dropdown-link :href="route('logout')"
                                     onclick="event.preventDefault();
+                                                localStorage.removeItem('cart_items');
                                                 this.closest('form').submit();" class="text-xs font-bold text-red-600 hover:bg-red-50">
                                 Keluar (Log Out)
                             </x-dropdown-link>
@@ -139,10 +148,11 @@
                 </x-responsive-nav-link>
 
                 <!-- Authentication -->
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" onsubmit="localStorage.removeItem('cart_items')">
                     @csrf
                     <x-responsive-nav-link :href="route('logout')"
                             onclick="event.preventDefault();
+                                        localStorage.removeItem('cart_items');
                                         this.closest('form').submit();" class="text-xs font-bold text-red-600">
                         Keluar (Log Out)
                     </x-responsive-nav-link>

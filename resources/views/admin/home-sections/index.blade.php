@@ -3,15 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Tampilan Beranda | Admin Sport Mania</title>
+    <title>Edit Tampilan Beranda | {{ $siteIdentity['site_name'] ?? 'Sport Mania' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         [x-cloak] { display: none !important; }
     </style>
 </head>
+@php
+    $rawIdentity = $siteIdentity ?? [
+        'site_name' => 'SPORT MANIA',
+        'site_tagline' => 'DISTRO ADMIN',
+        'site_code' => 'SM',
+        'site_logo' => null,
+    ];
+    $headerLogoUrl = !empty($rawIdentity['site_logo'])
+        ? (filter_var($rawIdentity['site_logo'], FILTER_VALIDATE_URL) ? $rawIdentity['site_logo'] : asset('storage/' . ltrim($rawIdentity['site_logo'], '/')))
+        : null;
+@endphp
 <body class="bg-slate-50 text-slate-900 antialiased"
       x-data="{
-          activeTab: 'brands',
+          activeTab: 'identity',
+          identity: {
+              site_name: @js($rawIdentity['site_name'] ?? 'SPORT MANIA'),
+              site_tagline: @js($rawIdentity['site_tagline'] ?? 'DISTRO ADMIN'),
+              site_code: @js($rawIdentity['site_code'] ?? 'SM'),
+              site_logo: @js($rawIdentity['site_logo'] ?? ''),
+              previewUrl: @js($headerLogoUrl ?? ''),
+              remove_logo: false
+          },
+          handleIdentityLogoChange(event) {
+              const file = event.target.files[0];
+              if (!file) return;
+              this.identity.remove_logo = false;
+              this.identity.previewUrl = URL.createObjectURL(file);
+          },
+          clearIdentityLogo() {
+              this.identity.site_logo = '';
+              this.identity.previewUrl = '';
+              this.identity.remove_logo = true;
+              const fileInput = document.getElementById('identity-logo-input');
+              if (fileInput) fileInput.value = '';
+          },
           resolvePreview(raw) {
               if (!raw) return '';
               if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('blob:')) return raw;
@@ -91,11 +123,14 @@
     <header class="sticky top-0 z-30 bg-slate-950 text-white border-b border-slate-800">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black italic text-sm">SM</div>
-                    <span class="font-black tracking-tighter uppercase italic text-base">
-                        <span class="text-red-500">SPORT</span>MANIA ADMIN
-                    </span>
+                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-2.5">
+                    <template x-if="identity.previewUrl">
+                        <img :src="identity.previewUrl" alt="Logo" class="w-8 h-8 rounded-lg object-cover bg-white p-0.5">
+                    </template>
+                    <template x-if="!identity.previewUrl">
+                        <div class="w-8 h-8 rounded-lg bg-red-600 flex items-center justify-center font-black italic text-sm" x-text="(identity.site_code || 'SM').slice(0, 4)"></div>
+                    </template>
+                    <span class="font-black tracking-tighter uppercase italic text-base" x-text="identity.site_name || 'SPORT MANIA'"></span>
                 </a>
                 <span class="text-slate-600">/</span>
                 <span class="text-xs font-bold text-slate-300">Edit Tampilan Beranda</span>
@@ -117,12 +152,12 @@
     <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div class="mb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
-                <span class="text-[10px] font-black uppercase tracking-widest text-red-600">Konten Halaman Utama</span>
+                <span class="text-[10px] font-black uppercase tracking-widest text-red-600">Konten & Identitas Toko</span>
                 <h1 class="text-2xl font-black uppercase tracking-tight text-slate-900 mt-0.5">
-                    Edit Tampilan <span class="text-red-600">Beranda</span>
+                    Edit Tampilan <span class="text-red-600">Beranda & Logo</span>
                 </h1>
                 <p class="text-xs text-slate-500 font-medium mt-1">
-                    Atur kartu brand terpercaya, hero banner slider, kategori pilihan, dan showcase unggulan di halaman depan.
+                    Ubah logo utama toko, nama brand, kartu brand terpercaya, hero banner slider, kategori pilihan, dan showcase.
                 </p>
             </div>
         </div>
@@ -146,6 +181,11 @@
 
         <!-- Navigasi Bagian -->
         <div class="flex flex-wrap gap-2 mb-6">
+            <button type="button" @click="activeTab = 'identity'"
+                    :class="activeTab === 'identity' ? 'bg-red-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
+                    class="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition">
+                0. Logo & Identitas Toko
+            </button>
             <button type="button" @click="activeTab = 'brands'"
                     :class="activeTab === 'brands' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
                     class="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition">
@@ -172,6 +212,90 @@
               class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-8">
             @csrf
             @method('PUT')
+
+            <!-- TAB 0: LOGO & IDENTITAS TOKO -->
+            <section x-show="activeTab === 'identity'" x-cloak class="space-y-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <h2 class="text-base font-black uppercase text-slate-900">Logo Utama & Nama Toko</h2>
+                    <p class="text-xs text-slate-500">Pengaturan ini otomatis mengganti logo kotak merah <strong>SM</strong> dan nama <strong>SPORT MANIA DISTRO ADMIN</strong> di sidebar admin maupun halaman website.</p>
+                </div>
+
+                <!-- Live Preview Sidebar Admin -->
+                <div class="p-5 rounded-2xl bg-slate-950 text-white border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <span class="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Preview Tampilan di Sidebar Admin</span>
+                        <div class="inline-flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 border border-slate-800">
+                            <template x-if="identity.previewUrl">
+                                <img :src="identity.previewUrl" alt="Logo Preview" class="w-10 h-10 rounded-xl object-cover bg-white p-0.5 shadow-lg">
+                            </template>
+                            <template x-if="!identity.previewUrl">
+                                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-red-600/30"
+                                     x-text="(identity.site_code || 'SM').slice(0, 4)"></div>
+                            </template>
+                            <div class="leading-tight">
+                                <span class="block font-black text-white tracking-tight text-sm uppercase" x-text="identity.site_name || 'SPORT MANIA'"></span>
+                                <span class="block text-[10px] font-bold tracking-widest uppercase text-red-500" x-text="identity.site_tagline || 'DISTRO ADMIN'"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-400 max-w-xs">
+                        Jika tidak mengunggah gambar logo, sistem akan menampilkan inisial kode monogram berlatar merah.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Nama Toko / Brand Utama *</label>
+                        <input type="text" name="identity[site_name]" x-model="identity.site_name" required
+                               placeholder="Contoh: SPORT MANIA"
+                               class="w-full text-xs font-black bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Subjudul Panel Admin</label>
+                        <input type="text" name="identity[site_tagline]" x-model="identity.site_tagline"
+                               placeholder="Contoh: DISTRO ADMIN"
+                               class="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Kode Monogram Fallback (Maks 4 Huruf) *</label>
+                        <input type="text" name="identity[site_code]" x-model="identity.site_code" maxlength="4" required
+                               placeholder="Contoh: SM"
+                               class="w-full uppercase text-xs font-black bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                        <template x-if="identity.previewUrl">
+                            <img :src="identity.previewUrl" alt="Logo Toko" class="max-w-full max-h-full object-contain p-1">
+                        </template>
+                        <template x-if="!identity.previewUrl">
+                            <span class="text-sm font-black text-red-600 uppercase" x-text="(identity.site_code || 'SM').slice(0, 4)"></span>
+                        </template>
+                    </div>
+
+                    <div class="flex-1 w-full">
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <label class="block text-xs font-bold text-slate-700">Upload Gambar Logo Toko (PNG, JPG, WEBP, SVG)</label>
+                            <button type="button"
+                                    x-show="identity.previewUrl"
+                                    @click="clearIdentityLogo()"
+                                    class="text-xs font-bold text-rose-600 hover:underline">
+                                Hapus Logo & Pakai Inisial
+                            </button>
+                        </div>
+                        <input type="hidden" name="identity[site_logo]" x-model="identity.site_logo">
+                        <input type="hidden" name="identity[remove_logo]" :value="identity.remove_logo ? 1 : 0">
+                        <input type="file"
+                               id="identity-logo-input"
+                               name="identity[logo_file]"
+                               accept="image/*"
+                               @change="handleIdentityLogoChange($event)"
+                               class="w-full text-xs bg-white border border-slate-200 rounded-xl p-2 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-slate-900 file:text-white hover:file:bg-red-600">
+                        <p class="text-[11px] text-slate-400 mt-1">Disarankan rasio persegi (1:1) dengan background transparan (PNG/SVG) agar terlihat tajam di header maupun sidebar.</p>
+                    </div>
+                </div>
+            </section>
 
             <!-- TAB 1: TRUSTED BRANDS -->
             <section x-show="activeTab === 'brands'" x-cloak class="space-y-4">

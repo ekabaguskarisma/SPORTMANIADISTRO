@@ -40,8 +40,16 @@
     <nav class="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
-                <div class="flex-shrink-0 flex items-center">
-                    <a href="{{ route('home') }}" class="flex items-center gap-3 hover:opacity-80 transition group">
+                <div class="flex-shrink-0 flex items-center gap-2.5 sm:gap-3">
+                    <button type="button"
+                            onclick="if (window.history.length > 1 && document.referrer.includes(window.location.host)) { window.history.back(); } else { window.location.href = '{{ route('home') }}#katalog'; }"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-900 text-gray-800 hover:text-white text-xs font-black transition active:scale-95"
+                            title="Kembali">
+                        <span>←</span>
+                        <span>Kembali</span>
+                    </button>
+
+                    <a href="{{ route('home') }}" class="flex items-center gap-2.5 hover:opacity-80 transition group">
                         <div class="p-1 rounded-lg bg-gray-900 border border-gray-800 shadow-inner">
                             <img src="{{ asset('image/LOGO.jpeg') }}" alt="Logo" class="h-8 w-auto object-contain rounded">
                         </div>
@@ -52,10 +60,6 @@
                 </div>
 
                 <div class="hidden lg:flex items-center space-x-6">
-                    <a href="{{ route('home') }}" class="text-xs font-bold uppercase tracking-wider text-gray-700 hover:text-red-600 transition flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-100">
-                        ← Kembali Berbelanja
-                    </a>
-
                     @if (Route::has('login'))
                         @auth
                             <div x-data="{ open: false }" class="relative border-l border-gray-200 pl-3">
@@ -99,12 +103,7 @@
             </div>
 
             <div x-show="mobileMenuOpen" x-cloak class="lg:hidden pb-5 border-t border-gray-100 pt-4 space-y-4">
-                <div class="px-2">
-                    <a href="{{ route('home') }}" class="block w-full text-center bg-gray-100 text-gray-700 font-bold text-xs uppercase tracking-widest py-3 rounded-lg">
-                        ← Kembali Berbelanja
-                    </a>
-                </div>
-                <div class="border-t border-gray-100 pt-4 px-2 space-y-2">
+                <div class="px-2 space-y-2">
                     @if (Route::has('login'))
                         @auth
                             <div class="flex items-center gap-3 mb-4 px-2">
@@ -121,6 +120,7 @@
                             @elseif(Auth::user()->role === 'owner' && Route::has('owner.dashboard'))
                                 <a href="{{ route('owner.dashboard') }}" class="block w-full text-center bg-gray-900 text-white font-bold text-xs uppercase tracking-widest py-3 rounded-lg mb-2">Owner Panel</a>
                             @endif
+                            <a href="{{ route('profile.edit') }}" class="block w-full text-center bg-gray-100 text-gray-700 font-bold text-xs uppercase tracking-widest py-3 rounded-lg mb-2">Profil Saya</a>
                             @if(Route::has('customer.orders'))
                                 <a href="{{ route('customer.orders') }}" class="block w-full text-center bg-gray-100 text-gray-700 font-bold text-xs uppercase tracking-widest py-3 rounded-lg mb-2">Pesanan Saya</a>
                             @endif

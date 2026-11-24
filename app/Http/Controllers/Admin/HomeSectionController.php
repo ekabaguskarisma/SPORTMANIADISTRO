@@ -14,6 +14,7 @@ class HomeSectionController extends Controller
     public function index(): View
     {
         return view('admin.home-sections.index', [
+            'siteIdentity' => SiteSetting::getJson('site_identity', $this->defaultSiteIdentity()),
             'trustedBrands' => SiteSetting::getJson('home_trusted_brands', $this->defaultTrustedBrands()),
             'heroSlides' => SiteSetting::getJson('home_hero_slides', $this->defaultHeroSlides()),
             'curatedCategories' => SiteSetting::getJson('home_curated_categories', $this->defaultCuratedCategories()),
@@ -24,6 +25,13 @@ class HomeSectionController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $validated = $request->validate([
+            'identity.site_name' => ['required', 'string', 'max:60'],
+            'identity.site_tagline' => ['nullable', 'string', 'max:60'],
+            'identity.site_code' => ['required', 'string', 'max:6'],
+            'identity.site_logo' => ['nullable', 'string', 'max:255'],
+            'identity.remove_logo' => ['nullable'],
+            'identity.logo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:5120'],
+
             'brands' => ['required', 'array', 'min:1'],
             'brands.*.code' => ['required', 'string', 'max:20'],
             'brands.*.name' => ['required', 'string', 'max:60'],
@@ -60,12 +68,37 @@ class HomeSectionController extends Controller
             'showcase.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
         ]);
 
+        // Simpan Identitas & Logo Toko
+        $identityInput = $validated['identity'];
+        $siteLogoPath = filled($identityInput['site_logo'] ?? null) ? trim((string) $identityInput['site_logo']) : null;
+
+        if (!empty($identityInput['remove_logo'])) {
+            if ($siteLogoPath && Storage::disk('public')->exists($siteLogoPath)) {
+                Storage::disk('public')->delete($siteLogoPath);
+            }
+            $siteLogoPath = null;
+        }
+
+        if ($request->hasFile('identity.logo_file') && $request->file('identity.logo_file')->isValid()) {
+            if ($siteLogoPath && Storage::disk('public')->exists($siteLogoPath)) {
+                Storage::disk('public')->delete($siteLogoPath);
+            }
+            $siteLogoPath = $request->file('identity.logo_file')->store('home-sections/identity', 'public');
+        }
+
+        SiteSetting::setJson('site_identity', [
+            'site_name' => trim($identityInput['site_name']),
+            'site_tagline' => trim($identityInput['site_tagline'] ?? 'DISTRO ADMIN'),
+            'site_code' => strtoupper(trim($identityInput['site_code'])),
+            'site_logo' => $siteLogoPath,
+        ]);
+
+        // Simpan Trusted Brands
         $brands = [];
         foreach (array_values($validated['brands']) as $idx => $brand) {
             $logoPath = $brand['logo'] ?? ($brand['existing_logo'] ?? null);
             $logoPath = filled($logoPath) ? trim((string) $logoPath) : null;
 
-            // Jika user klik "Hapus Logo"
             if (!empty($brand['remove_logo'])) {
                 if ($logoPath && Storage::disk('public')->exists($logoPath)) {
                     Storage::disk('public')->delete($logoPath);
@@ -73,7 +106,6 @@ class HomeSectionController extends Controller
                 $logoPath = null;
             }
 
-            // Jika ada file baru yang diupload (mendukung name="brands[i][logo_file]" maupun "brands[i][logo]")
             $uploadedLogo = $request->file("brands.$idx.logo_file") ?? $request->file("brands.$idx.logo");
             if ($uploadedLogo && $uploadedLogo->isValid()) {
                 if ($logoPath && Storage::disk('public')->exists($logoPath)) {
@@ -90,6 +122,7 @@ class HomeSectionController extends Controller
             ];
         }
 
+        // Simpan Hero Slides
         $slides = [];
         foreach (array_values($validated['slides']) as $idx => $slide) {
             $imagePath = $slide['image'] ?? '';
@@ -108,6 +141,7 @@ class HomeSectionController extends Controller
             ];
         }
 
+        // Simpan Curated Categories
         $categories = [];
         foreach (array_values($validated['categories']) as $idx => $cat) {
             $imagePath = $cat['image'] ?? '';
@@ -124,6 +158,7 @@ class HomeSectionController extends Controller
             ];
         }
 
+        // Simpan Featured Showcase
         $showcase = $validated['showcase'];
         $showcaseImage = $showcase['image'] ?? '';
         if ($request->hasFile('showcase.image_file')) {
@@ -143,7 +178,17 @@ class HomeSectionController extends Controller
             'image' => $showcaseImage,
         ]);
 
-        return back()->with('success', 'Tampilan bagian beranda berhasil diperbarui!');
+        return back()->with('success', 'Logo, identitas toko, dan tampilan beranda berhasil diperbarui!');
+    }
+
+    private function defaultSiteIdentity(): array
+    {
+        return [
+            'site_name' => 'SPORT MANIA',
+            'site_tagline' => 'DISTRO ADMIN',
+            'site_code' => 'SM',
+            'site_logo' => null,
+        ];
     }
 
     private function defaultTrustedBrands(): array

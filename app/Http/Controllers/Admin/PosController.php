@@ -19,12 +19,12 @@ class PosController extends Controller
     {
         $request->validate([
             'items_json'     => 'required|string',
-            'customer_name'  => 'required|string|max:120',
+            'customer_name'  => 'nullable|string|max:120',
             'phone'          => 'nullable|string|max:30',
             'payment_method' => 'required|string|max:50',
-            'subtotal'       => 'required|numeric|min:0',
+            'subtotal'       => 'nullable|numeric|min:0',
             'discount'       => 'nullable|numeric|min:0',
-            'total_price'    => 'required|numeric|min:0',
+            'total_price'    => 'nullable|numeric|min:0',
             'cash_received'  => 'nullable|numeric|min:0',
             'cash_change'    => 'nullable|numeric|min:0',
         ]);
@@ -84,12 +84,17 @@ class PosController extends Controller
                 $discount = min($subtotal, max(0, (float) ($request->discount ?? 0)));
                 $grandTotal = max(0, $subtotal - $discount);
 
-                if (strtoupper($request->payment_method) === 'TUNAI') {
-                    $cashReceived = (float) ($request->cash_received ?? 0);
-                    if ($cashReceived < $grandTotal) {
-                        throw new \Exception('Nominal uang tunai yang diterima kurang dari total tagihan.');
-                    }
+                $isTunai = str_contains(strtoupper($request->payment_method), 'TUNAI');
+                $cashReceived = (float) ($request->cash_received ?? 0);
+                $cashChange = $isTunai ? max(0, $cashReceived - $grandTotal) : 0;
+
+                if ($isTunai && $cashReceived < $grandTotal) {
+                    throw new \Exception('Nominal uang tunai yang diterima kurang dari total tagihan.');
                 }
+
+                $customerName = trim((string) ($request->customer_name ?? '')) !== ''
+                    ? trim((string) $request->customer_name)
+                    : 'Pelanggan Walk-in';
 
                 $orderCode = 'POS-' . now()->format('Ymd') . '-' . strtoupper(Str::random(4));
                 $orderCols = Schema::getColumnListing('orders');
@@ -110,11 +115,11 @@ class PosController extends Controller
 
                 // Nama Pembeli
                 if (in_array('recipient_name', $orderCols, true)) {
-                    $orderData['recipient_name'] = $request->customer_name;
+                    $orderData['recipient_name'] = $customerName;
                 } elseif (in_array('customer_name', $orderCols, true)) {
-                    $orderData['customer_name'] = $request->customer_name;
+                    $orderData['customer_name'] = $customerName;
                 } elseif (in_array('name', $orderCols, true)) {
-                    $orderData['name'] = $request->customer_name;
+                    $orderData['name'] = $customerName;
                 }
 
                 // Kontak
@@ -173,9 +178,9 @@ class PosController extends Controller
 
                 // Catatan Kembalian Tunai
                 $notes = 'Transaksi Kasir Offline (Kasir: ' . (Auth::user()->name ?? 'Admin') . ')';
-                if (strtoupper($request->payment_method) === 'TUNAI') {
-                    $notes .= ' | Tunai: Rp ' . number_format((float) $request->cash_received, 0, ',', '.')
-                            . ' | Kembali: Rp ' . number_format((float) $request->cash_change, 0, ',', '.');
+                if ($isTunai) {
+                    $notes .= ' | Tunai: Rp ' . number_format($cashReceived, 0, ',', '.')
+                            . ' | Kembali: Rp ' . number_format($cashChange, 0, ',', '.');
                 }
                 if (in_array('notes', $orderCols, true)) {
                     $orderData['notes'] = $notes;

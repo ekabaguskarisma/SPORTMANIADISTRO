@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel — Sport Mania Distro</title>
+    <title>Admin Panel — {{ $siteIdentity['site_name'] ?? 'Sport Mania Distro' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -292,15 +292,28 @@
 
             <div>
                 <div class="h-16 px-5 flex items-center justify-between border-b border-slate-800/80">
-                    <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 group">
-                        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-red-600/30 group-hover:scale-105 transition-transform">
-                            SM
-                        </div>
-                        <div class="leading-tight">
-                            <span class="block font-black text-white tracking-tight text-sm uppercase">Sport Mania</span>
-                            <span class="block text-[10px] font-bold tracking-widest uppercase text-red-500">Distro Admin</span>
-                        </div>
-                    </a>
+                   @php
+    $brandLogoRaw = $siteIdentity['site_logo'] ?? null;
+    $brandLogoUrl = filled($brandLogoRaw)
+        ? (filter_var($brandLogoRaw, FILTER_VALIDATE_URL) ? $brandLogoRaw : asset('storage/' . ltrim($brandLogoRaw, '/')))
+        : null;
+    $brandName = $siteIdentity['site_name'] ?? 'Sport Mania';
+    $brandTagline = $siteIdentity['site_tagline'] ?? 'Distro Admin';
+    $brandCode = $siteIdentity['site_code'] ?? 'SM';
+@endphp
+<a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 group">
+    @if($brandLogoUrl)
+        <img src="{{ $brandLogoUrl }}" alt="{{ $brandName }}" class="w-9 h-9 rounded-xl object-cover bg-white p-0.5 shadow-lg group-hover:scale-105 transition-transform shrink-0">
+    @else
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-rose-700 flex items-center justify-center font-black text-white text-sm shadow-lg shadow-red-600/30 group-hover:scale-105 transition-transform shrink-0">
+            {{ strtoupper(substr($brandCode, 0, 4)) }}
+        </div>
+    @endif
+    <div class="leading-tight min-w-0">
+        <span class="block font-black text-white tracking-tight text-sm uppercase truncate">{{ $brandName }}</span>
+        <span class="block text-[10px] font-bold tracking-widest uppercase text-red-500 truncate">{{ $brandTagline }}</span>
+    </div>
+</a>
                     <button @click="sidebarOpen = false" class="lg:hidden text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800">
                         ✕
                     </button>
@@ -925,9 +938,11 @@
                                   method="POST"
                                   class="space-y-3 text-xs border-t border-slate-100 pt-4">
                                 @csrf
-                                <input type="hidden" name="items_json" :value="JSON.stringify(posCart.map(i => ({ product_id: i.product_id, variant_id: i.variant_id, qty: i.qty, price: i.price, hpp: i.hpp })))">
+                                <input type="hidden" name="items_json" :value="JSON.stringify(posCart.map(i => ({ product_id: i.product_id, variant_id: i.variant_id, qty: i.qty, price: i.price, size: i.size, color: i.color })))">
+                                <input type="hidden" name="subtotal" :value="getPosSubtotal()">
                                 <input type="hidden" name="discount" :value="Math.max(0, Number(posDiscount || 0))">
-                                <input type="hidden" name="total_amount" :value="getPosTotal()">
+                                <input type="hidden" name="total_price" :value="getPosTotal()">
+                                <input type="hidden" name="cash_change" :value="Math.max(0, Number(posCashReceived || 0) - Number(getPosTotal() || 0))">
 
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                                     <div>
@@ -936,7 +951,7 @@
                                     </div>
                                     <div>
                                         <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">No. HP / WA (Opsional)</label>
-                                        <input type="text" name="customer_phone" x-model="posCustomerPhone" placeholder="08..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
+                                        <input type="text" name="phone" x-model="posCustomerPhone" placeholder="08..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 font-semibold text-slate-900 focus:ring-2 focus:ring-red-500 outline-none">
                                     </div>
                                 </div>
 
@@ -970,7 +985,7 @@
                                         </div>
                                         <div class="flex justify-between text-xs pt-1 border-t border-slate-200/70 tabular-nums">
                                             <span class="font-bold text-slate-600">Kembalian</span>
-                                            <span class="font-black text-emerald-700" x-text="'Rp ' + Number(getPosChange()).toLocaleString('id-ID')"></span>
+                                            <span class="font-black text-emerald-700" x-text="'Rp ' + Math.max(0, Number(posCashReceived || 0) - Number(getPosTotal() || 0)).toLocaleString('id-ID')"></span>
                                         </div>
                                     </div>
                                 </template>

@@ -313,7 +313,7 @@
     </div>
 
     <!-- Main Navbar -->
-    <nav class="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all duration-300">
+    <nav x-data="{ mobileSearchOpen: false }" class="bg-white/95 backdrop-blur-md border-b border-gray-100 sticky top-0 z-40 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
 
@@ -425,31 +425,70 @@
                     @endif
                 </div>
 
-                <!-- Bagian Mobile: Keranjang & Hamburger -->
-                <div class="flex items-center gap-3 lg:hidden">
-                    <a href="{{ route('customer.cart') }}" class="relative text-gray-700 p-1.5 rounded-full" title="Keranjang Belanja" aria-label="Keranjang Belanja">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                        <span x-show="cartCount > 0" x-cloak class="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
+                <!-- Bagian Mobile: Tombol Search, Keranjang & Hamburger -->
+                <div class="flex items-center gap-1.5 sm:gap-2.5 lg:hidden">
+                    <!-- Tombol Search Mobile -->
+                    <button type="button"
+                            @click="mobileSearchOpen = !mobileSearchOpen; mobileMenuOpen = false; if(mobileSearchOpen) $nextTick(() => $refs.mobileSearchInput.focus())"
+                            :class="mobileSearchOpen ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'"
+                            class="p-2 rounded-full transition"
+                            title="Cari Produk"
+                            aria-label="Cari Produk">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Tombol Keranjang Mobile -->
+                    <a href="{{ route('customer.cart') }}" class="relative text-gray-700 hover:bg-gray-100 p-2 rounded-full transition" title="Keranjang Belanja" aria-label="Keranjang Belanja">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span x-show="cartCount > 0" x-cloak class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
                     </a>
 
-                    <button type="button" @click="mobileMenuOpen = !mobileMenuOpen" :aria-expanded="mobileMenuOpen.toString()" aria-label="Buka menu navigasi" class="text-gray-700 p-2">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <!-- Tombol Hamburger Menu -->
+                    <button type="button"
+                            @click="mobileMenuOpen = !mobileMenuOpen; mobileSearchOpen = false"
+                            :aria-expanded="mobileMenuOpen.toString()"
+                            aria-label="Buka menu navigasi"
+                            class="text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition">
+                        <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <svg x-show="mobileMenuOpen" x-cloak class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
             </div>
 
+            <!-- Bar Pencarian Cepat Khusus HP -->
+            <div x-show="mobileSearchOpen"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="lg:hidden pb-3.5 pt-2 border-t border-gray-100">
+                <form @submit.prevent="mobileSearchOpen = false; scrollToCatalog()" class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <input type="text"
+                               x-ref="mobileSearchInput"
+                               x-model="searchQuery"
+                               placeholder="Cari jersey, sepatu, tas..."
+                               aria-label="Cari produk olahraga"
+                               class="w-full bg-gray-100 text-xs text-gray-900 rounded-xl pl-3.5 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        <button type="button"
+                                x-show="searchQuery.length > 0"
+                                x-cloak
+                                @click="searchQuery = ''; $refs.mobileSearchInput.focus()"
+                                aria-label="Hapus pencarian"
+                                class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-700 text-xs font-bold">✕</button>
+                    </div>
+                    <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <span>Cari</span>
+                    </button>
+                </form>
+            </div>
+
             <!-- Mobile Dropdown Menu -->
             <div x-show="mobileMenuOpen" x-cloak class="lg:hidden pb-5 border-t border-gray-100 pt-4 space-y-4">
-                <div class="px-2 relative">
-                    <input type="text"
-                           x-model="searchQuery"
-                           @keydown.enter.prevent="mobileMenuOpen = false; scrollToCatalog()"
-                           placeholder="Cari produk olahraga..."
-                           aria-label="Cari produk olahraga"
-                           class="w-full bg-gray-100 text-xs text-gray-900 rounded-lg pl-4 pr-9 py-3 focus:outline-none focus:ring-2 focus:ring-red-600">
-                    <button type="button" @click="searchQuery = ''" x-show="searchQuery.length > 0" x-cloak class="absolute right-5 top-3 text-gray-400 hover:text-red-600 text-xs font-bold" aria-label="Hapus pencarian">✕</button>
-                </div>
-
                 <div class="flex flex-wrap gap-2 px-2">
                     <a href="#katalog" @click="activeFilter = 'semua'; mobileMenuOpen = false" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700">Semua</a>
                     <a href="#katalog" @click="activeFilter = 'pakaian'; mobileMenuOpen = false" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700">👕 Pakaian</a>

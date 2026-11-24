@@ -118,6 +118,7 @@
 <body class="bg-[#FAFAFA] text-gray-900 antialiased selection:bg-red-500 selection:text-white flex flex-col min-h-screen"
       x-data="{ 
           mobileMenuOpen: false,
+          mobileSearchOpen: false,
           openKategori: false,
           sizeGuideOpen: false,
           searchQuery: '',
@@ -305,9 +306,17 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-20">
                 
-                <!-- Logo & Brand Name -->
-                <div class="flex-shrink-0 flex items-center">
-                    <a href="{{ route('home') }}" class="flex items-center gap-3 hover:opacity-80 transition group">
+                <!-- Kiri: Tombol Kembali + Logo & Brand Name -->
+                <div class="flex-shrink-0 flex items-center gap-2.5 sm:gap-3">
+                    <button type="button"
+                            onclick="if (window.history.length > 1 && document.referrer.includes(window.location.host)) { window.history.back(); } else { window.location.href = '{{ route('home') }}#katalog'; }"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-900 text-gray-800 hover:text-white text-xs font-black transition active:scale-95"
+                            title="Kembali">
+                        <span>←</span>
+                        <span>Kembali</span>
+                    </button>
+
+                    <a href="{{ route('home') }}" class="flex items-center gap-2.5 hover:opacity-80 transition group">
                         <div class="p-1 rounded-lg bg-gray-900 border border-gray-800 shadow-inner">
                             <img src="{{ asset('image/LOGO.jpeg') }}" alt="Logo" class="h-8 w-auto object-contain rounded">
                         </div>
@@ -406,29 +415,77 @@
                     @endif
                 </div>
 
-                <!-- Bagian Mobile: Keranjang & Hamburger -->
-                <div class="flex items-center gap-3 lg:hidden">
-                    <a href="{{ route('customer.cart') }}" class="relative text-gray-700 p-1.5 rounded-full" title="Keranjang Belanja">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                        <span x-show="cartCount > 0" x-cloak class="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
+                <!-- Bagian Mobile: Tombol Search, Keranjang & Hamburger -->
+                <div class="flex items-center gap-1.5 sm:gap-2.5 lg:hidden">
+                    <!-- Tombol Search Mobile -->
+                    <button type="button"
+                            @click="mobileSearchOpen = !mobileSearchOpen; mobileMenuOpen = false; if(mobileSearchOpen) $nextTick(() => $refs.mobileSearchInput.focus())"
+                            :class="mobileSearchOpen ? 'bg-red-50 text-red-600' : 'text-gray-700 hover:bg-gray-100'"
+                            class="p-2 rounded-full transition"
+                            title="Cari Produk">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+
+                    <!-- Tombol Keranjang Mobile -->
+                    <a href="{{ route('customer.cart') }}" class="relative text-gray-700 hover:bg-gray-100 p-2 rounded-full transition" title="Keranjang Belanja">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                        <span x-show="cartCount > 0" x-cloak class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
                     </a>
 
-                    <button @click="mobileMenuOpen = !mobileMenuOpen" class="text-gray-700 p-2">
-                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    <!-- Tombol Hamburger Menu -->
+                    <button type="button"
+                            @click="mobileMenuOpen = !mobileMenuOpen; mobileSearchOpen = false"
+                            class="text-gray-700 hover:bg-gray-100 p-2 rounded-lg transition"
+                            title="Menu">
+                        <svg x-show="!mobileMenuOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                        <svg x-show="mobileMenuOpen" x-cloak class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                     </button>
                 </div>
             </div>
 
+            <!-- Bar Pencarian Cepat Khusus HP -->
+            <div x-show="mobileSearchOpen"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-2"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 class="lg:hidden pb-3.5 pt-2 border-t border-gray-100">
+                <form action="{{ route('home') }}#katalog" method="GET" class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <input type="text"
+                               name="search"
+                               x-ref="mobileSearchInput"
+                               x-model="searchQuery"
+                               placeholder="Cari jersey, sepatu, tas..."
+                               class="w-full bg-gray-100 text-xs text-gray-900 rounded-xl pl-3.5 pr-8 py-2.5 focus:outline-none focus:ring-2 focus:ring-red-600 font-medium">
+                        <button type="button"
+                                x-show="searchQuery.length > 0"
+                                @click="searchQuery = ''; $refs.mobileSearchInput.focus()"
+                                class="absolute right-2.5 top-2.5 text-gray-400 hover:text-gray-700 text-xs font-bold">✕</button>
+                    </div>
+                    <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-sm active:scale-95 transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        <span>Cari</span>
+                    </button>
+                </form>
+            </div>
+
             <!-- Mobile Dropdown Menu -->
             <div x-show="mobileMenuOpen" x-cloak class="lg:hidden pb-5 border-t border-gray-100 pt-4 space-y-4">
-                <form action="{{ route('home') }}#katalog" method="GET" class="px-2">
-                    <input type="text" name="search" x-model="searchQuery" placeholder="Cari produk olahraga..." class="w-full bg-gray-100 text-xs text-gray-900 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-red-600">
-                </form>
-                
-                <div class="flex flex-wrap gap-2 px-2">
-                    <a href="{{ route('home') }}" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700">Beranda</a>
-                    <a href="{{ route('home') }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700">Katalog</a>
-                    <a href="{{ route('home', ['category' => 'promo']) }}#katalog" class="text-[11px] font-black px-3 py-2 rounded-lg bg-red-600 text-white">🔥 Promo</a>
+                <div class="px-2 space-y-2">
+                    <p class="text-[10px] font-black uppercase tracking-wider text-gray-400">Menu & Kategori</p>
+                    <div class="flex flex-wrap gap-2">
+                        <a href="{{ route('home') }}" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">Beranda</a>
+                        <a href="{{ route('home') }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">Katalog</a>
+                        <a href="{{ route('home', ['category' => 'pakaian']) }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">👕 Pakaian</a>
+                        <a href="{{ route('home', ['category' => 'sepatu']) }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">👟 Sepatu</a>
+                        <a href="{{ route('home', ['category' => 'tas']) }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">🎒 Tas</a>
+                        <a href="{{ route('home', ['category' => 'aksesoris']) }}#katalog" class="text-[11px] font-bold px-3 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-red-50 hover:text-red-600">🥊 Aksesoris</a>
+                        <a href="{{ route('home', ['category' => 'promo']) }}#katalog" class="text-[11px] font-black px-3 py-2 rounded-lg bg-red-600 text-white">🔥 Promo Spesial</a>
+                    </div>
                 </div>
 
                 <div class="border-t border-gray-100 pt-4 px-2 space-y-2">
@@ -476,13 +533,13 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 flex-grow w-full">
         
         <!-- Breadcrumbs -->
-        <nav class="flex text-xs text-gray-500 font-medium mb-8">
+        <nav class="flex text-xs text-gray-500 font-medium mb-8 overflow-x-auto whitespace-nowrap hide-scrollbar">
             <ol class="inline-flex items-center space-x-2">
                 <li><a href="{{ route('home') }}" class="hover:text-red-600 transition">Beranda</a></li>
-                <li><span class="mx-2 text-gray-300">/</span></li>
+                <li><span class="mx-1.5 text-gray-300">/</span></li>
                 <li><a href="{{ route('home') }}#katalog" class="hover:text-red-600 transition">Katalog</a></li>
-                <li><span class="mx-2 text-gray-300">/</span></li>
-                <li class="text-gray-900 font-bold" aria-current="page">{{ $produk->name }}</li>
+                <li><span class="mx-1.5 text-gray-300">/</span></li>
+                <li class="text-gray-900 font-bold truncate max-w-[180px] sm:max-w-xs" aria-current="page">{{ $produk->name }}</li>
             </ol>
         </nav>
 
