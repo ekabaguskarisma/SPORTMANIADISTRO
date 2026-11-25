@@ -19,6 +19,7 @@ class HomeSectionController extends Controller
             'heroSlides' => SiteSetting::getJson('home_hero_slides', $this->defaultHeroSlides()),
             'curatedCategories' => SiteSetting::getJson('home_curated_categories', $this->defaultCuratedCategories()),
             'featuredShowcase' => SiteSetting::getJson('home_featured_showcase', $this->defaultFeaturedShowcase()),
+            'storeLocation' => SiteSetting::getJson('store_location', $this->defaultStoreLocation()),
         ]);
     }
 
@@ -66,6 +67,15 @@ class HomeSectionController extends Controller
             'showcase.cta_url' => ['nullable', 'string', 'max:255'],
             'showcase.image' => ['nullable', 'string', 'max:255'],
             'showcase.image_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+
+            'location.free_shipping_enabled' => ['nullable'],
+            'location.min_order_free_shipping_enabled' => ['nullable'],
+            'location.min_order_free_shipping_amount' => ['required', 'numeric', 'min:0'],
+            'location.store_address' => ['required', 'string', 'max:500'],
+            'location.store_lat' => ['required', 'numeric', 'between:-90,90'],
+            'location.store_lng' => ['required', 'numeric', 'between:-180,180'],
+            'location.free_shipping_radius_km' => ['required', 'numeric', 'min:0', 'max:100'],
+            'location.google_maps_url' => ['nullable', 'url', 'max:500'],
         ]);
 
         // Simpan Identitas & Logo Toko
@@ -166,6 +176,11 @@ class HomeSectionController extends Controller
                 ->store('home-sections/showcase', 'public');
         }
 
+        // Simpan Lokasi Store & Pengaturan Promo Ongkir
+        $loc = $validated['location'];
+        $freeShippingEnabled = $request->boolean('location.free_shipping_enabled');
+        $minOrderFreeShippingEnabled = $request->boolean('location.min_order_free_shipping_enabled');
+
         SiteSetting::setJson('home_trusted_brands', $brands);
         SiteSetting::setJson('home_hero_slides', $slides);
         SiteSetting::setJson('home_curated_categories', $categories);
@@ -177,8 +192,18 @@ class HomeSectionController extends Controller
             'cta_url' => trim($showcase['cta_url'] ?? '#katalog'),
             'image' => $showcaseImage,
         ]);
+        SiteSetting::setJson('store_location', [
+            'free_shipping_enabled' => $freeShippingEnabled,
+            'min_order_free_shipping_enabled' => $minOrderFreeShippingEnabled,
+            'min_order_free_shipping_amount' => (float) $loc['min_order_free_shipping_amount'],
+            'store_address' => trim($loc['store_address']),
+            'store_lat' => (float) $loc['store_lat'],
+            'store_lng' => (float) $loc['store_lng'],
+            'free_shipping_radius_km' => (float) $loc['free_shipping_radius_km'],
+            'google_maps_url' => trim($loc['google_maps_url'] ?? ''),
+        ]);
 
-        return back()->with('success', 'Logo, identitas toko, dan tampilan beranda berhasil diperbarui!');
+        return back()->with('success', 'Logo, identitas toko, lokasi store, dan pengaturan promo ongkir berhasil diperbarui!');
     }
 
     private function defaultSiteIdentity(): array
@@ -244,6 +269,20 @@ class HomeSectionController extends Controller
             'cta_text' => 'BELANJA KATEGORI WOMEN →',
             'cta_url' => '#katalog',
             'image' => '',
+        ];
+    }
+
+    private function defaultStoreLocation(): array
+    {
+        return [
+            'free_shipping_enabled' => true,
+            'min_order_free_shipping_enabled' => true,
+            'min_order_free_shipping_amount' => 250000,
+            'store_address' => 'Jl. MT. Haryono No.129, Dinoyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65144',
+            'store_lat' => -7.9398000,
+            'store_lng' => 112.6083000,
+            'free_shipping_radius_km' => 10,
+            'google_maps_url' => 'https://maps.google.com/?q=-7.9398,112.6083',
         ];
     }
 }

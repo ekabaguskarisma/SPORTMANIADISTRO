@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Tampilan Beranda | {{ $siteIdentity['site_name'] ?? 'Sport Mania' }}</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
         [x-cloak] { display: none !important; }
     </style>
@@ -19,10 +21,114 @@
     $headerLogoUrl = !empty($rawIdentity['site_logo'])
         ? (filter_var($rawIdentity['site_logo'], FILTER_VALIDATE_URL) ? $rawIdentity['site_logo'] : asset('storage/' . ltrim($rawIdentity['site_logo'], '/')))
         : null;
+
+    $rawStoreLocation = $storeLocation ?? [
+        'free_shipping_enabled' => true,
+        'min_order_free_shipping_enabled' => true,
+        'min_order_free_shipping_amount' => 250000,
+        'store_address' => 'Jl. MT. Haryono No.129, Dinoyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65144',
+        'store_lat' => -7.9398,
+        'store_lng' => 112.6083,
+        'free_shipping_radius_km' => 10,
+        'google_maps_url' => 'https://maps.google.com/?q=-7.9398,112.6083',
+    ];
 @endphp
 <body class="bg-slate-50 text-slate-900 antialiased"
       x-data="{
           activeTab: 'identity',
+          mapInstance: null,
+          mapMarker: null,
+          mapCircle: null,
+          location: {
+              free_shipping_enabled: @js((bool) ($rawStoreLocation['free_shipping_enabled'] ?? true)),
+              min_order_free_shipping_enabled: @js((bool) ($rawStoreLocation['min_order_free_shipping_enabled'] ?? true)),
+              min_order_free_shipping_amount: @js((float) ($rawStoreLocation['min_order_free_shipping_amount'] ?? 250000)),
+              store_address: @js($rawStoreLocation['store_address'] ?? 'Jl. MT. Haryono No.129, Dinoyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65144'),
+              store_lat: @js((float) ($rawStoreLocation['store_lat'] ?? -7.9398)),
+              store_lng: @js((float) ($rawStoreLocation['store_lng'] ?? 112.6083)),
+              free_shipping_radius_km: @js((float) ($rawStoreLocation['free_shipping_radius_km'] ?? 10)),
+              google_maps_url: @js($rawStoreLocation['google_maps_url'] ?? '')
+          },
+          initStoreMap() {
+              if (typeof L === 'undefined') return;
+              this.$nextTick(() => {
+                  const container = document.getElementById('admin-store-map');
+                  if (!container) return;
+
+                  const lat = Number(this.location.store_lat) || -7.9398;
+                  const lng = Number(this.location.store_lng) || 112.6083;
+                  const radiusMeters = this.location.free_shipping_enabled
+                      ? (Number(this.location.free_shipping_radius_km) || 10) * 1000
+                      : 0;
+
+                  if (!this.mapInstance) {
+                      this.mapInstance = L.map(container).setView([lat, lng], 13);
+                      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          maxZoom: 19,
+                          attribution: '© OpenStreetMap'
+                      }).addTo(this.mapInstance);
+
+                      this.mapMarker = L.marker([lat, lng], { draggable: true }).addTo(this.mapInstance);
+                      this.mapCircle = L.circle([lat, lng], {
+                          color: '#dc2626',
+                          fillColor: '#ef4444',
+                          fillOpacity: 0.15,
+                          radius: radiusMeters
+                      }).addTo(this.mapInstance);
+
+                      this.mapMarker.on('dragend', (e) => {
+                          const pos = e.target.getLatLng();
+                          this.updateCoordinates(pos.lat, pos.lng, false);
+                      });
+
+                      this.mapInstance.on('click', (e) => {
+                          this.updateCoordinates(e.latlng.lat, e.latlng.lng, false);
+                      });
+                  }
+
+                  setTimeout(() => {
+                      this.mapInstance.invalidateSize();
+                      this.syncMapShape(true);
+                  }, 120);
+              });
+          },
+          updateCoordinates(lat, lng, recenter = true) {
+              const fixedLat = Number(Number(lat).toFixed(7));
+              const fixedLng = Number(Number(lng).toFixed(7));
+              this.location.store_lat = fixedLat;
+              this.location.store_lng = fixedLng;
+              this.location.google_maps_url = `https://maps.google.com/?q=${fixedLat},${fixedLng}`;
+              this.syncMapShape(recenter);
+          },
+          syncMapShape(recenter = false) {
+              if (!this.mapInstance || !this.mapMarker || !this.mapCircle) return;
+              const lat = Number(this.location.store_lat) || -7.9398;
+              const lng = Number(this.location.store_lng) || 112.6083;
+              const radiusMeters = this.location.free_shipping_enabled
+                  ? Math.max(0, Number(this.location.free_shipping_radius_km) || 0) * 1000
+                  : 0;
+
+              this.mapMarker.setLatLng([lat, lng]);
+              this.mapCircle.setLatLng([lat, lng]);
+              this.mapCircle.setRadius(radiusMeters);
+              if (recenter) {
+                  this.mapInstance.setView([lat, lng], 13);
+              }
+          },
+          useCurrentLocation() {
+              if (!navigator.geolocation) {
+                  alert('Browser tidak mendukung deteksi lokasi GPS.');
+                  return;
+              }
+              navigator.geolocation.getCurrentPosition(
+                  (pos) => {
+                      this.updateCoordinates(pos.coords.latitude, pos.coords.longitude, true);
+                  },
+                  () => {
+                      alert('Gagal mengambil lokasi GPS. Pastikan izin lokasi browser aktif.');
+                  }
+              );
+          },
           identity: {
               site_name: @js($rawIdentity['site_name'] ?? 'SPORT MANIA'),
               site_tagline: @js($rawIdentity['site_tagline'] ?? 'DISTRO ADMIN'),
@@ -157,7 +263,7 @@
                     Edit Tampilan <span class="text-red-600">Beranda & Logo</span>
                 </h1>
                 <p class="text-xs text-slate-500 font-medium mt-1">
-                    Ubah logo utama toko, nama brand, kartu brand terpercaya, hero banner slider, kategori pilihan, dan showcase.
+                    Ubah logo utama toko, nama brand, kartu brand terpercaya, hero banner slider, kategori pilihan, showcase, dan lokasi store.
                 </p>
             </div>
         </div>
@@ -205,6 +311,11 @@
                     :class="activeTab === 'showcase' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
                     class="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition">
                 4. Featured Showcase
+            </button>
+            <button type="button" @click="activeTab = 'location'; initStoreMap()"
+                    :class="activeTab === 'location' ? 'bg-red-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'"
+                    class="px-4 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition">
+                5. Lokasi Store & Ongkir
             </button>
         </div>
 
@@ -540,6 +651,154 @@
                         <input type="hidden" name="showcase[image]" x-model="showcase.image">
                         <input type="file" name="showcase[image_file]" accept="image/*"
                                class="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl p-2">
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: LOKASI STORE & GRATIS ONGKIR -->
+            <section x-show="activeTab === 'location'" x-cloak class="space-y-6">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div>
+                        <h2 class="text-base font-black uppercase text-slate-900">Titik Lokasi Store & Pengaturan Promo Ongkir</h2>
+                        <p class="text-xs text-slate-500">Atur promo gratis ongkir berdasarkan radius Malang Kota maupun nominal minimal belanja pelanggan.</p>
+                    </div>
+                    <button type="button" @click="useCurrentLocation()"
+                            class="bg-slate-900 hover:bg-red-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shrink-0">
+                        📍 Gunakan Lokasi GPS Saya
+                    </button>
+                </div>
+
+                <!-- 2 KARTU PENGATURAN PROMO ONGKIR -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <!-- Promo 1: Gratis Ongkir Radius Malang Kota -->
+                    <div class="p-4 sm:p-5 rounded-2xl border transition-colors flex flex-col justify-between gap-3"
+                         :class="location.free_shipping_enabled ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50 border-slate-200'">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs font-black uppercase tracking-wider text-slate-900">
+                                        1. Gratis Ongkir Radius Malang
+                                    </span>
+                                    <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full"
+                                          :class="location.free_shipping_enabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'"
+                                          x-text="location.free_shipping_enabled ? 'AKTIF' : 'NONAKTIF'"></span>
+                                </div>
+                                <p class="text-[11px] text-slate-600 leading-relaxed">
+                                    Menampilkan peta & GPS di halaman Checkout untuk gratis ongkir dalam radius tertentu dari titik store.
+                                </p>
+                            </div>
+
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox"
+                                       name="location[free_shipping_enabled]"
+                                       value="1"
+                                       x-model="location.free_shipping_enabled"
+                                       @change="syncMapShape(false)"
+                                       class="sr-only peer">
+                                <div class="w-12 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Promo 2: Gratis Ongkir Minimal Belanja -->
+                    <div class="p-4 sm:p-5 rounded-2xl border transition-colors flex flex-col justify-between gap-3"
+                         :class="location.min_order_free_shipping_enabled ? 'bg-emerald-50/70 border-emerald-200' : 'bg-slate-50 border-slate-200'">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-xs font-black uppercase tracking-wider text-slate-900">
+                                        2. Gratis Ongkir Minimal Belanja
+                                    </span>
+                                    <span class="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full"
+                                          :class="location.min_order_free_shipping_enabled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-700'"
+                                          x-text="location.min_order_free_shipping_enabled ? 'AKTIF' : 'NONAKTIF'"></span>
+                                </div>
+                                <p class="text-[11px] text-slate-600 leading-relaxed">
+                                    Otomatis menggratiskan ongkir JNE REG & SiCepat BEST jika total belanja mencapai nominal minimal.
+                                </p>
+                            </div>
+
+                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                <input type="checkbox"
+                                       name="location[min_order_free_shipping_enabled]"
+                                       value="1"
+                                       x-model="location.min_order_free_shipping_enabled"
+                                       class="sr-only peer">
+                                <div class="w-12 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-5 peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-200/70">
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">
+                                Nominal Minimal Belanja Gratis Ongkir (Rp) *
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-3.5 flex items-center text-xs font-black text-slate-500">Rp</span>
+                                <input type="number"
+                                       step="1000"
+                                       min="0"
+                                       name="location[min_order_free_shipping_amount]"
+                                       x-model.number="location.min_order_free_shipping_amount"
+                                       :disabled="!location.min_order_free_shipping_enabled"
+                                       required
+                                       placeholder="250000"
+                                       class="w-full text-xs font-black bg-white border border-slate-200 rounded-xl pl-10 pr-3.5 py-2 disabled:opacity-50">
+                                <template x-if="!location.min_order_free_shipping_enabled">
+                                    <input type="hidden" name="location[min_order_free_shipping_amount]" :value="location.min_order_free_shipping_amount">
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Peta Interaktif -->
+                <div class="rounded-2xl overflow-hidden border border-slate-200 shadow-inner bg-slate-100">
+                    <div id="admin-store-map" class="w-full h-72 sm:h-80 z-10"></div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Latitude Store *</label>
+                        <input type="number" step="any" name="location[store_lat]"
+                               x-model.number="location.store_lat"
+                               @input="updateCoordinates(location.store_lat, location.store_lng, true)" required
+                               class="w-full text-xs font-black bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Longitude Store *</label>
+                        <input type="number" step="any" name="location[store_lng]"
+                               x-model.number="location.store_lng"
+                               @input="updateCoordinates(location.store_lat, location.store_lng, true)" required
+                               class="w-full text-xs font-black bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Radius Gratis Ongkir Malang Kota (km) *</label>
+                        <input type="number" step="0.5" min="0" max="100" name="location[free_shipping_radius_km]"
+                               x-model.number="location.free_shipping_radius_km"
+                               @input="syncMapShape(false)"
+                               :disabled="!location.free_shipping_enabled"
+                               required
+                               class="w-full text-xs font-black bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 disabled:opacity-50">
+                        <template x-if="!location.free_shipping_enabled">
+                            <input type="hidden" name="location[free_shipping_radius_km]" :value="location.free_shipping_radius_km">
+                        </template>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Alamat Lengkap Store *</label>
+                        <input type="text" name="location[store_address]"
+                               x-model="location.store_address" required
+                               placeholder="Contoh: Jl. MT. Haryono No.129, Dinoyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65144"
+                               class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1">Link Google Maps Store (Opsional)</label>
+                        <input type="url" name="location[google_maps_url]"
+                               x-model="location.google_maps_url"
+                               placeholder="https://maps.google.com/?q=-7.9398,112.6083"
+                               class="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
                     </div>
                 </div>
             </section>

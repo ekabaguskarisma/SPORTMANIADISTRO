@@ -9,16 +9,26 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn(['stock', 'size', 'color']);
+            foreach (['stock', 'size', 'color'] as $column) {
+                if (Schema::hasColumn('products', $column)) {
+                    $table->dropColumn($column);
+                }
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->integer('stock')->default(0);
-            $table->string('size')->nullable();
-            $table->string('color')->nullable();
+            if (!Schema::hasColumn('products', 'stock')) {
+                $table->integer('stock')->default(0);
+            }
+            if (!Schema::hasColumn('products', 'size')) {
+                $table->string('size')->nullable();
+            }
+            if (!Schema::hasColumn('products', 'color')) {
+                $table->string('color')->nullable();
+            }
         });
     }
 };

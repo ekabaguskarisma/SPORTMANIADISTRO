@@ -1,8 +1,38 @@
 window.customerCheckout = function (config = {}) {
+    const storeConfig = config.storeLocation || {};
+    const freeShippingEnabled = Boolean(
+        config.freeShippingEnabled ?? storeConfig.free_shipping_enabled ?? true,
+    );
+    const minOrderFreeShippingEnabled = Boolean(
+        config.minOrderFreeShippingEnabled ??
+        storeConfig.min_order_free_shipping_enabled ??
+        true,
+    );
+    const minOrderFreeShippingAmount = Number(
+        config.minOrderFreeShippingAmount ??
+            storeConfig.min_order_free_shipping_amount ??
+            250000,
+    );
+    const storeLat = Number(storeConfig.store_lat ?? -7.9398);
+    const storeLng = Number(storeConfig.store_lng ?? 112.6083);
+    const freeRadiusKm = freeShippingEnabled
+        ? Number(storeConfig.free_shipping_radius_km ?? 10)
+        : 0;
+
     return {
         voucherApplyUrl: config.voucherApplyUrl || "",
         checkoutProcessUrl: config.checkoutProcessUrl || "",
         csrfToken: config.csrfToken || "",
+
+        freeShippingEnabled,
+        minOrderFreeShippingEnabled,
+        minOrderFreeShippingAmount,
+        storeLat,
+        storeLng,
+        freeRadiusKm,
+        mapInstance: null,
+        customerMarker: null,
+        isLocating: false,
 
         cartItems: (JSON.parse(localStorage.getItem("cart_items")) || []).map(
             (item) => ({
@@ -46,6 +76,8 @@ window.customerCheckout = function (config = {}) {
             phone: config.defaultPhone || "",
             email: config.defaultEmail || "",
             address: config.defaultAddress || "",
+            lat: null,
+            lng: null,
             shippingMethod: (() => {
                 const saved = localStorage.getItem("selected_courier") || "jne";
                 if (saved === "SiCepat BEST" || saved === "sicepat")
@@ -56,6 +88,197 @@ window.customerCheckout = function (config = {}) {
             })(),
             paymentMethod: "transfer",
             notes: "",
+        },
+
+        init() {
+            if (!this.freeShippingEnabled) return;
+            this.$nextTick(() => {
+                this.initCheckoutMap();
+            });
+        },
+
+        initCheckoutMap() {
+            if (!this.freeShippingEnabled) return;
+            const mapEl = document.getElementById("checkout-delivery-map");
+            if (!mapEl || typeof window.L === "undefined") return;
+            if (this.mapInstance) {
+                this.mapInstance.invalidateSize();
+                return;
+            }
+
+            const L = window.L;
+            const map = L.map("checkout-delivery-map").setView(
+                [this.storeLat, this.storeLng],
+                12,
+            );
+
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                attribution: "© OpenStreetMap contributors",
+            }).addTo(map);
+
+            // Marker Toko Sport Mania Distro
+            L.marker([this.storeLat, this.storeLng])
+                .addTo(map)
+                .bindPopup(
+                    "<strong>Sport Mania Distro</strong><br>Titik Pusat Pengiriman (Malang)",
+                );
+
+            // Lingkaran Zona Gratis Ongkir Malang Kota
+            if (this.freeRadiusKm > 0) {
+                L.circle([this.storeLat, this.storeLng], {
+                    color: "#10b981",
+                    fillColor: "#10b981",
+                    fillOpacity: 0.12,
+                    radius: this.freeRadiusKm * 1000,
+                }).addTo(map);
+            }
+
+            // Klik di peta untuk menaruh / memindahkan pin alamat pembeli
+            map.on("click", (e) => {
+                this.setCustomerPin(e.latlng.lat, e.latlng.lng, true);
+            });
+
+            this.mapInstance = map;
+        },
+
+        setCustomerPin(lat, lng, fetchAddress = false) {
+            if (!this.freeShippingEnabled) return;
+            const L = window.L;
+            if (!this.mapInstance || !L) return;
+
+            const parsedLat = Number(Number(lat).toFixed(7));
+            const parsedLng = Number(Number(lng).toFixed(7));
+            this.form.lat = parsedLat;
+            this.form.lng = parsedLng;
+
+            if (!this.customerMarker) {
+                const redIcon = L.divIcon({
+                    className: "custom-customer-pin",
+                    html: `<div style="background:#dc2626;width:22px;height:22px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 12px rgba(0,0,0,0.35);"></div>`,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                });
+
+                this.customerMarker = L.marker([parsedLat, parsedLng], {
+                    draggable: true,
+                    icon: redIcon,
+                }).addTo(this.mapInstance);
+
+                this.customerMarker.on("dragend", (event) => {
+                    const pos = event.target.getLatLng();
+                    this.setCustomerPin(pos.lat, pos.lng, true);
+                });
+            } else {
+                this.customerMarker.setLatLng([parsedLat, parsedLng]);
+            }
+
+            this.customerMarker
+                .bindPopup(
+                    `<strong>Titik Pengiriman Anda</strong><br>Jarak: ${this.distanceKm} km`,
+                )
+                .openPopup();
+
+            if (fetchAddress) {
+                this.reverseGeocode(parsedLat, parsedLng);
+            }
+        },
+
+        useCurrentLocation() {
+            if (!this.freeShippingEnabled) return;
+            if (!navigator.geolocation) {
+                this.showToast(
+                    "Browser Anda tidak mendukung deteksi lokasi GPS.",
+                    "error",
+                );
+                return;
+            }
+
+            this.isLocating = true;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    this.isLocating = false;
+                    const { latitude, longitude } = pos.coords;
+                    if (this.mapInstance) {
+                        this.mapInstance.setView([latitude, longitude], 15);
+                    }
+                    this.setCustomerPin(latitude, longitude, true);
+                    this.showToast(
+                        "Titik lokasi GPS berhasil ditemukan!",
+                        "success",
+                    );
+                },
+                () => {
+                    this.isLocating = false;
+                    this.showToast(
+                        "Gagal mengakses GPS. Silakan klik langsung titik rumah Anda di peta.",
+                        "error",
+                    );
+                },
+                { enableHighAccuracy: true, timeout: 10000 },
+            );
+        },
+
+        async reverseGeocode(lat, lng) {
+            try {
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+                    { headers: { Accept: "application/json" } },
+                );
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data && data.display_name && !this.form.address.trim()) {
+                    this.form.address = data.display_name;
+                }
+            } catch (_) {
+                // Abaikan jika gagal reverse geocode; user tetap bisa mengetik alamat manual
+            }
+        },
+
+        get distanceKm() {
+            if (
+                !this.freeShippingEnabled ||
+                this.form.lat === null ||
+                this.form.lng === null
+            )
+                return null;
+            const toRad = (deg) => (deg * Math.PI) / 180;
+            const R = 6371; // Radius bumi (km)
+            const dLat = toRad(this.form.lat - this.storeLat);
+            const dLng = toRad(this.form.lng - this.storeLng);
+            const a =
+                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(toRad(this.storeLat)) *
+                    Math.cos(toRad(this.form.lat)) *
+                    Math.sin(dLng / 2) *
+                    Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return Number((R * c).toFixed(2));
+        },
+
+        get isWithinFreeRadius() {
+            if (!this.freeShippingEnabled) return false;
+            return (
+                this.distanceKm !== null &&
+                this.freeRadiusKm > 0 &&
+                this.distanceKm <= this.freeRadiusKm
+            );
+        },
+
+        get isEligibleMinOrderFreeShipping() {
+            if (!this.minOrderFreeShippingEnabled) return false;
+            if (this.minOrderFreeShippingAmount <= 0) return true;
+            return this.subtotal >= this.minOrderFreeShippingAmount;
+        },
+
+        get minOrderLabel() {
+            const amt = this.minOrderFreeShippingAmount;
+            if (amt >= 1000000) {
+                return (amt / 1000000).toLocaleString("id-ID") + "jt";
+            }
+            if (amt >= 1000) {
+                return Math.round(amt / 1000).toLocaleString("id-ID") + "rb";
+            }
+            return "Rp " + amt.toLocaleString("id-ID");
         },
 
         syncCart() {
@@ -213,6 +436,15 @@ window.customerCheckout = function (config = {}) {
         setShippingMethod(method) {
             this.form.shippingMethod = method;
             localStorage.setItem("selected_courier", method);
+            if (method !== "pickup" && this.freeShippingEnabled) {
+                this.$nextTick(() => {
+                    if (this.mapInstance) {
+                        this.mapInstance.invalidateSize();
+                    } else {
+                        this.initCheckoutMap();
+                    }
+                });
+            }
         },
 
         get totalItems() {
@@ -237,7 +469,8 @@ window.customerCheckout = function (config = {}) {
         get shippingCost() {
             if (this.form.shippingMethod === "pickup" || this.subtotal === 0)
                 return 0;
-            if (this.subtotal >= 250000) return 0;
+            if (this.freeShippingEnabled && this.isWithinFreeRadius) return 0;
+            if (this.isEligibleMinOrderFreeShipping) return 0;
             return this.form.shippingMethod === "sicepat" ? 25000 : 20000;
         },
 
@@ -305,6 +538,15 @@ window.customerCheckout = function (config = {}) {
                         ? "Ambil di Store Malang"
                         : this.form.address.trim(),
                 );
+                if (
+                    this.freeShippingEnabled &&
+                    this.form.shippingMethod !== "pickup" &&
+                    this.form.lat !== null &&
+                    this.form.lng !== null
+                ) {
+                    formData.append("shipping_lat", this.form.lat);
+                    formData.append("shipping_lng", this.form.lng);
+                }
                 formData.append("shipping_method", this.form.shippingMethod);
                 formData.append("payment_method", this.form.paymentMethod);
                 formData.append("notes", this.form.notes.trim());
@@ -337,6 +579,9 @@ window.customerCheckout = function (config = {}) {
                     const finalDiscount = Number(
                         result.discount_amount ?? discountSnapshot,
                     );
+                    const finalShipping = Number(
+                        result.shipping_cost ?? shippingSnapshot,
+                    );
 
                     const detailPesanan = itemsSnapshot
                         .map(
@@ -352,6 +597,14 @@ window.customerCheckout = function (config = {}) {
                               ? "💵 Bayar di Tempat (COD)"
                               : "⏳ Menyusul di Riwayat Pesanan";
 
+                    const mapsPinLine =
+                        this.freeShippingEnabled &&
+                        this.form.shippingMethod !== "pickup" &&
+                        this.form.lat !== null &&
+                        this.form.lng !== null
+                            ? `🗺️ *Titik Peta (${this.distanceKm} km):* https://maps.google.com/?q=${this.form.lat},${this.form.lng}\n`
+                            : "";
+
                     const rawTextWA =
                         `*HALO ADMIN SPORT MANIA DISTRO*\nSaya ingin mengkonfirmasi pesanan baru dengan detail berikut:\n\n` +
                         `🔖 *ORDER ID:* *${result.order_number}*\n` +
@@ -359,7 +612,7 @@ window.customerCheckout = function (config = {}) {
                         `📞 *No. HP:* ${this.form.phone.trim()}\n` +
                         `📍 *Pengiriman:* ${this.form.shippingMethod.toUpperCase()}\n` +
                         (this.form.shippingMethod !== "pickup"
-                            ? `🏠 *Alamat:* ${this.form.address.trim()}\n`
+                            ? `🏠 *Alamat:* ${this.form.address.trim()}\n${mapsPinLine}`
                             : `🏢 *Catatan:* Ambil langsung di Store Malang\n`) +
                         `💳 *Pembayaran:* ${this.form.paymentMethod.toUpperCase()} (${statusBukti})\n` +
                         (this.form.notes.trim()
@@ -370,7 +623,7 @@ window.customerCheckout = function (config = {}) {
                         (finalDiscount > 0
                             ? `🎟️ *Voucher (${voucherCodeSnapshot}):* -Rp ${Number(finalDiscount).toLocaleString("id-ID")}\n`
                             : "") +
-                        `📦 *Ongkir:* ${shippingSnapshot === 0 ? "GRATIS" : "Rp " + Number(shippingSnapshot).toLocaleString("id-ID")}\n` +
+                        `📦 *Ongkir:* ${finalShipping === 0 ? "GRATIS" : "Rp " + Number(finalShipping).toLocaleString("id-ID")}\n` +
                         `🔥 *Total Tagihan:* *Rp ${Number(finalTotal).toLocaleString("id-ID")}*`;
 
                     const waLink = `https://wa.me/6282234548092?text=${encodeURIComponent(rawTextWA)}`;

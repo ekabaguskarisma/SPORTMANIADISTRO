@@ -7,15 +7,16 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     public function up(): void
-    {
-        Schema::table('products', function (Blueprint $table) {
-            // Kolom harga diskon (boleh kosong)
+{
+    Schema::table('products', function (Blueprint $table) {
+        if (!Schema::hasColumn('products', 'discount_price')) {
             $table->decimal('discount_price', 12, 2)->nullable()->after('price');
-            
-            // Kolom penanda apakah produk ini tampil di "Apparel Pilihan" (default: tidak)
+        }
+        if (!Schema::hasColumn('products', 'is_featured')) {
             $table->boolean('is_featured')->default(false)->after('discount_price');
-        });
-    }
+        }
+    });
+}
 
     public function down(): void
     {

@@ -6,6 +6,26 @@
     $curatedCategories = $curatedCategories ?? [];
     $featuredShowcase = $featuredShowcase ?? [];
 
+    $defaultStoreData = [
+        'store_address' => 'Jl. MT. Haryono No.129, Dinoyo, Kec. Lowokwaru, Kota Malang, Jawa Timur 65144',
+        'store_lat' => -7.9398,
+        'store_lng' => 112.6083,
+        'free_shipping_radius_km' => 10,
+        'google_maps_url' => 'https://maps.google.com/?q=-7.9398,112.6083',
+    ];
+
+    $storeLocation = class_exists(\App\Models\SiteSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('site_settings')
+        ? \App\Models\SiteSetting::getJson('store_location', $defaultStoreData)
+        : $defaultStoreData;
+
+    $storeAddress = trim((string) ($storeLocation['store_address'] ?? $defaultStoreData['store_address']));
+    $storeLat = (float) ($storeLocation['store_lat'] ?? $defaultStoreData['store_lat']);
+    $storeLng = (float) ($storeLocation['store_lng'] ?? $defaultStoreData['store_lng']);
+    $freeShippingRadiusKm = (float) ($storeLocation['free_shipping_radius_km'] ?? 10);
+    $storeMapsUrl = filled($storeLocation['google_maps_url'] ?? null)
+        ? trim((string) $storeLocation['google_maps_url'])
+        : "https://maps.google.com/?q={$storeLat},{$storeLng}";
+
     $resolveHomeMedia = function (?string $raw, string $fallback): string {
         if (blank($raw)) {
             return $fallback;
@@ -32,18 +52,18 @@
             'subtitle' => 'Performance Apparel',
             'title' => 'PRO RUNNING 2026',
             'desc' => 'Dirancang dengan teknologi aerodinamis ringan untuk memaksimalkan kecepatan lari tanpa kompromi.',
-            'cta_text' => 'Jelajahi Koleksi',
-            'cta_url' => '#katalog',
-            'image' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=2070&auto=format&fit=crop',
+            'ctaText' => 'Jelajahi Koleksi',
+            'ctaUrl' => '#katalog',
+            'bgImage' => 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=2070&auto=format&fit=crop',
         ],
         [
             'tag' => '#2 High Performance',
             'subtitle' => 'Maximum Strength',
             'title' => 'ELITE TRAINING',
             'desc' => 'Dukungan perlengkapan angkat beban profesional untuk menjaga stabilitas dan performa latihan maksimal.',
-            'cta_text' => 'Jelajahi Koleksi',
-            'cta_url' => '#katalog',
-            'image' => 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2070&auto=format&fit=crop',
+            'ctaText' => 'Jelajahi Koleksi',
+            'ctaUrl' => '#katalog',
+            'bgImage' => 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=2070&auto=format&fit=crop',
         ],
     ];
     $lookbookSlidesData = !empty($heroSlides)
@@ -54,9 +74,9 @@
                 'subtitle' => $s['kicker'] ?? $fallbackSlide['subtitle'],
                 'title' => $s['title'] ?? $fallbackSlide['title'],
                 'desc' => $s['description'] ?? $fallbackSlide['desc'],
-                'ctaText' => $s['cta_text'] ?? $fallbackSlide['cta_text'],
-                'ctaUrl' => $s['cta_url'] ?? $fallbackSlide['cta_url'],
-                'bgImage' => $resolveHomeMedia($s['image'] ?? '', $fallbackSlide['image']),
+                'ctaText' => $s['cta_text'] ?? $fallbackSlide['ctaText'],
+                'ctaUrl' => $s['cta_url'] ?? $fallbackSlide['ctaUrl'],
+                'bgImage' => $resolveHomeMedia($s['image'] ?? '', $fallbackSlide['bgImage']),
             ];
         }, $heroSlides, array_keys($heroSlides)))
         : $defaultLookbookSlides;
@@ -241,7 +261,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sport Mania Distro - Pusat Sport Fashion & Apparel Original Terdepan di Malang.">
+    <meta name="description" content="Sport Mania Distro - Pusat Sport Fashion & Apparel Original Terdepan di Malang ({{ $storeAddress }}).">
     <title>Sport Mania Distro | Premium Sportswear</title>
 
     @vite([
@@ -260,7 +280,10 @@
         window.__SM_EDITORIAL_CATEGORIES__ = @json($categoriesData);
         window.__SM_WELCOME_CONFIG__ = {
             initialFilter: @json($initialFilter),
-            initialSearch: @json($initialSearch)
+            initialSearch: @json($initialSearch),
+            freeShippingRadiusKm: @json($freeShippingRadiusKm),
+            storeAddress: @json($storeAddress),
+            storeMapsUrl: @json($storeMapsUrl),
         };
     </script>
 </head>
@@ -290,14 +313,18 @@
 
     <!-- Top Announcement Bar -->
     <div class="bg-gray-900 text-gray-300 text-[11px] py-2.5 px-4 font-medium tracking-wide border-b border-gray-800">
-        <div class="max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center space-x-4">
-                <span class="inline-flex items-center gap-2 text-white">
-                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
-                    PROMO 2026: Gratis Ongkir Seluruh Jawa min. Belanja Rp 250rb!
+        <div class="max-w-7xl mx-auto flex justify-between items-center gap-4">
+            <div class="flex items-center space-x-4 min-w-0">
+                <span class="inline-flex items-center gap-2 text-white truncate">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+                    <span>PROMO 2026: Gratis Ongkir Malang Kota (Radius {{ $freeShippingRadiusKm }} km dari Store)</span>
                 </span>
             </div>
-            <div class="hidden sm:flex items-center space-x-6 text-gray-400">
+            <div class="hidden sm:flex items-center space-x-6 text-gray-400 shrink-0">
+                <a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer" class="hover:text-white transition flex items-center gap-1">
+                    📍 Lokasi Store
+                </a>
+                <span class="text-gray-700">|</span>
                 <a href="{{ route('order.track') }}" class="hover:text-white transition flex items-center gap-1.5 text-red-400 font-bold">
                     📦 Lacak Pesanan
                 </a>
@@ -498,9 +525,12 @@
                     <a href="#promo-showcase" @click="mobileMenuOpen = false" class="text-[11px] font-black px-3 py-2 rounded-lg bg-red-600 text-white">🔥 Promo</a>
                 </div>
 
-                <div class="px-2">
-                    <a href="{{ route('order.track') }}" class="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-gray-900 hover:bg-red-600 text-white text-xs font-black uppercase tracking-wider transition">
-                        📦 Lacak Status Pesanan
+                <div class="px-2 grid grid-cols-2 gap-2">
+                    <a href="{{ route('order.track') }}" class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-gray-900 hover:bg-red-600 text-white text-xs font-black uppercase tracking-wider transition">
+                        📦 Lacak Pesanan
+                    </a>
+                    <a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer" class="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-xs font-black uppercase tracking-wider transition">
+                        📍 Lokasi Store
                     </a>
                 </div>
 
@@ -547,7 +577,7 @@
     </nav>
 
     <!-- =========================================================================
-         HERO SECTION UTAMA (YOUR JOURNEY OUR GEAR - TETAP UTUH DI ATAS)
+         HERO SECTION UTAMA (YOUR JOURNEY OUR GEAR)
     ========================================================================== -->
     <div class="relative bg-gray-900 overflow-hidden">
         <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(#ef4444 1px, transparent 1px); background-size: 24px 24px;"></div>
@@ -713,7 +743,7 @@
                     <!-- Indikator Dots -->
                     <template x-if="total > 1">
                         <div class="absolute bottom-4 inset-x-0 z-30 flex items-center justify-center gap-1.5">
-                            <template x-for="(s, i) in slides" :key="i">
+                            <template x-for="(s, i) in slides" :key="'promo-dot-' + i">
                                 <button type="button" @click="goTo(i)" :aria-label="'Pilih promo ' + (i + 1)"
                                         class="h-1.5 rounded-full transition-all duration-300"
                                         :class="current === i ? 'w-7 bg-red-500' : 'w-1.5 bg-white/45 hover:bg-white/85'"></button>
@@ -1115,7 +1145,7 @@
              @mouseenter="paused = true"
              @mouseleave="paused = false">
 
-        <template x-for="(slide, index) in slides" :key="index">
+        <template x-for="(slide, index) in slides" :key="'lookbook-slide-' + index">
             <div x-show="activeSlide === index"
                  x-transition:enter="transition ease-out duration-1000"
                  x-transition:enter-start="opacity-0 scale-105"
@@ -1172,7 +1202,7 @@
         </div>
 
         <div class="absolute bottom-0 inset-x-0 z-30 flex gap-1.5 p-2 bg-gradient-to-t from-gray-950 to-transparent">
-            <template x-for="(slide, index) in slides" :key="index">
+            <template x-for="(slide, index) in slides" :key="'lookbook-dot-' + index">
                 <button type="button" @click="activeSlide = index"
                         :aria-label="'Pilih slide ' + (index + 1)"
                         class="h-1 flex-1 rounded-full transition-all duration-500"
@@ -1197,7 +1227,7 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                <template x-for="cat in categories" :key="cat.id">
+                <template x-for="cat in categories" :key="'cat-card-' + cat.id">
                     <div @click="activeCategory = cat.id"
                          class="group relative h-[380px] sm:h-[420px] rounded-3xl overflow-hidden cursor-pointer shadow-md hover:shadow-2xl transition-all duration-500 border-2"
                          :class="activeCategory === cat.id ? 'border-red-600 ring-4 ring-red-600/20 scale-[1.02]' : 'border-transparent'">
@@ -1227,7 +1257,7 @@
             <div class="relative bg-gray-950 text-white rounded-3xl p-8 sm:p-12 overflow-hidden shadow-2xl border border-gray-900">
                 <div class="absolute top-0 right-0 w-96 h-96 bg-red-600/15 blur-[120px] pointer-events-none rounded-full"></div>
 
-                <template x-for="cat in categories" :key="cat.id">
+                <template x-for="cat in categories" :key="'cat-view-' + cat.id">
                     <div x-show="activeCategory === cat.id"
                          x-transition:enter="transition ease-out duration-700 delay-100"
                          x-transition:enter-start="opacity-0 translate-y-6 scale-[0.98]"
@@ -1290,9 +1320,16 @@
                     <h2 class="text-5xl sm:text-7xl lg:text-8xl font-black uppercase tracking-tighter italic text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] leading-none pt-2">
                         BUILT FOR <span class="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-red-700 pr-6">CHAMPIONS</span>
                     </h2>
-                    <p class="text-gray-300 text-xs sm:text-sm font-semibold max-w-xl uppercase tracking-[0.3em] opacity-90">
-                        Malang, East Java • Official Sport Fashion Studio
+                    <p class="text-gray-200 text-xs sm:text-sm font-semibold max-w-2xl tracking-wide opacity-95">
+                        📍 {{ $storeAddress }}
                     </p>
+                    <div class="pt-1">
+                        <a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-2 bg-white/15 hover:bg-red-600 text-white border border-white/25 hover:border-red-600 backdrop-blur-md font-bold text-xs uppercase tracking-widest px-6 py-3 rounded-full transition-all shadow-xl">
+                            <span>Buka Rute di Google Maps</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -1306,11 +1343,14 @@
                     </span>
                 </div>
                 <p class="text-gray-300 text-sm sm:text-base font-medium leading-relaxed">
-                    Sport Mania Distro adalah pusat apparel dan perlengkapan olahraga premium terdepan. Kami mendedikasikan diri untuk menyediakan produk original berkualitas tinggi yang memadukan teknologi performa mutakhir dengan estetika gaya hidup urban modern.
+                    Sport Mania Distro adalah pusat apparel dan perlengkapan olahraga premium terdepan di Kota Malang. Kami mendedikasikan diri untuk menyediakan produk original berkualitas tinggi yang memadukan teknologi performa mutakhir dengan estetika gaya hidup urban modern.
                 </p>
                 <div class="flex flex-wrap items-center justify-center gap-4 text-xs font-bold text-gray-200">
                     <span class="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 transition-colors px-6 py-3 rounded-full border border-white/20 backdrop-blur-md shadow-lg">
                         🛡️ 100% Original Guaranteed
+                    </span>
+                    <span class="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 transition-colors px-6 py-3 rounded-full border border-white/20 backdrop-blur-md shadow-lg">
+                        📍 Free Ongkir Malang Kota ({{ $freeShippingRadiusKm }} km)
                     </span>
                     <span class="flex items-center gap-2.5 bg-white/10 hover:bg-white/15 transition-colors px-6 py-3 rounded-full border border-white/20 backdrop-blur-md shadow-lg">
                         ⚡ Instant WhatsApp Checkout
@@ -1409,6 +1449,9 @@
 
     <!-- FOOTER SECTION -->
     <footer x-data="welcomeFooter()"
+            data-free-radius="{{ $freeShippingRadiusKm }}"
+            data-store-address="{{ $storeAddress }}"
+            data-store-maps="{{ $storeMapsUrl }}"
             class="bg-[#09090b] text-white pt-24 pb-12 rounded-t-[3rem] -mt-12 relative z-30 shadow-[0_-20px_50px_rgba(0,0,0,0.2)]">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 pb-16 border-b border-gray-800/60">
@@ -1425,6 +1468,18 @@
                     <p class="text-gray-400 text-xs leading-relaxed font-medium">
                         Sebagai Pusat Sport Fashion & Apparel Online terdepan di Malang, kami menciptakan pengalaman gaya tanpa batas dengan menghadirkan perlengkapan olahraga original dan lokal terbaik. <strong>Bersama Sport Mania, You Own Now.</strong>
                     </p>
+
+                    <!-- Alamat Offline Store -->
+                    <div class="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2">
+                        <p class="text-[10px] font-black uppercase tracking-widest text-red-400">📍 Alamat Offline Store</p>
+                        <p class="text-xs text-gray-300 leading-relaxed font-medium">{{ $storeAddress }}</p>
+                        <a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer"
+                           class="inline-flex items-center gap-1.5 text-[11px] font-bold text-white hover:text-red-400 transition">
+                            <span>Lihat di Google Maps</span>
+                            <span>↗</span>
+                        </a>
+                    </div>
+
                     <div class="space-y-2 text-xs text-gray-400 font-medium">
                         <p class="font-bold text-white uppercase tracking-wider">Layanan Pelanggan Sport Mania</p>
                         <p>E-mail: support@sportmaniadistro.com</p>
@@ -1462,6 +1517,7 @@
                     <h4 class="font-black text-xs uppercase tracking-[0.2em] text-white">Tentang Kami</h4>
                     <ul class="space-y-3 text-xs text-gray-400 font-medium">
                         <li><button type="button" @click="openInfo('tentang')" class="hover:text-white transition text-left cursor-pointer">Tentang Sport Mania</button></li>
+                        <li><a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer" class="hover:text-white transition text-red-400 font-bold">Lokasi Toko (Google Maps) ↗</a></li>
                         <li><a href="https://wa.me/6282234548092?text=Halo%20Admin%20Sport%20Mania,%20saya%20tertarik%20kerja%20sama%20brand." target="_blank" rel="noopener noreferrer" class="hover:text-white transition">Promosikan Brand Anda</a></li>
                         <li><button type="button" @click="openInfo('tentang')" class="hover:text-white transition text-left cursor-pointer">Pers / Media</button></li>
                         <li><button type="button" @click="openInfo('tentang')" class="hover:text-white transition text-left cursor-pointer">Karir & Internship</button></li>
@@ -1534,7 +1590,10 @@
                     <button type="button" @click="infoModal.open = false" class="w-8 h-8 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs cursor-pointer" aria-label="Tutup modal">✕</button>
                 </div>
                 <p class="text-xs text-gray-600 leading-relaxed whitespace-pre-line" x-text="infoModal.content"></p>
-                <div class="pt-2 flex justify-end gap-2">
+                <div class="pt-2 flex flex-wrap justify-end gap-2">
+                    <a href="{{ $storeMapsUrl }}" target="_blank" rel="noopener noreferrer" class="bg-slate-100 hover:bg-slate-200 text-gray-800 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition">
+                        📍 Google Maps Store
+                    </a>
                     <a href="https://wa.me/6282234548092" target="_blank" rel="noopener noreferrer" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-xl transition">
                         Chat CS WhatsApp
                     </a>

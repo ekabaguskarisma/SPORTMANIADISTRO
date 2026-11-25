@@ -9,15 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            // Hanya tambahkan color, hapus baris size
-            $table->string('color')->nullable()->after('size');
+            if (!Schema::hasColumn('products', 'color')) {
+                $table->string('color')->nullable();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            $table->dropColumn(['color']);
+            if (Schema::hasColumn('products', 'color')) {
+                $table->dropColumn(['color']);
+            }
         });
     }
 };

@@ -10,10 +10,34 @@
         'resources/js/app.js',
         'resources/css/pages/customer-checkout.css',
     ])
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 
 @php
+    $storeLocation = class_exists(\App\Models\SiteSetting::class) && \Illuminate\Support\Facades\Schema::hasTable('site_settings')
+        ? \App\Models\SiteSetting::getJson('store_location', [
+            'free_shipping_enabled' => true,
+            'min_order_free_shipping_enabled' => true,
+            'min_order_free_shipping_amount' => 250000,
+            'store_lat' => -7.9398,
+            'store_lng' => 112.6083,
+            'free_shipping_radius_km' => 10,
+        ])
+        : [
+            'free_shipping_enabled' => true,
+            'min_order_free_shipping_enabled' => true,
+            'min_order_free_shipping_amount' => 250000,
+            'store_lat' => -7.9398,
+            'store_lng' => 112.6083,
+            'free_shipping_radius_km' => 10,
+        ];
+
+    $freeShippingEnabled = (bool) ($storeLocation['free_shipping_enabled'] ?? true);
+    $minOrderFreeShippingEnabled = (bool) ($storeLocation['min_order_free_shipping_enabled'] ?? true);
+    $minOrderFreeShippingAmount = (float) ($storeLocation['min_order_free_shipping_amount'] ?? 250000);
+
     $checkoutPayload = [
         'voucherApplyUrl' => route('voucher.apply'),
         'checkoutProcessUrl' => route('checkout.process'),
@@ -22,6 +46,10 @@
         'defaultPhone' => $defaultPhone ?? (Auth::user()->phone ?? ''),
         'defaultEmail' => Auth::user()->email ?? '',
         'defaultAddress' => $defaultAddress ?? (Auth::user()->address ?? ''),
+        'freeShippingEnabled' => $freeShippingEnabled,
+        'minOrderFreeShippingEnabled' => $minOrderFreeShippingEnabled,
+        'minOrderFreeShippingAmount' => $minOrderFreeShippingAmount,
+        'storeLocation' => $storeLocation,
     ];
 @endphp
 
@@ -117,7 +145,9 @@
                                 <span class="font-black text-xs uppercase">JNE REG</span>
                                 <input type="radio" name="shipping" value="jne" x-model="form.shippingMethod" class="accent-red-600">
                             </div>
-                            <span class="text-[11px] font-medium text-gray-500" x-text="subtotal >= 250000 ? 'Gratis Ongkir (Min. 250rb)' : 'Estimasi 2-3 Hari (Rp 20.000)'"></span>
+                            <span class="text-[11px] font-medium"
+                                  :class="(isWithinFreeRadius || isEligibleMinOrderFreeShipping) ? 'text-emerald-600 font-bold' : 'text-gray-500'"
+                                  x-text="isWithinFreeRadius ? 'Gratis Ongkir Malang Kota' : (isEligibleMinOrderFreeShipping ? 'Gratis Ongkir (Min. ' + minOrderLabel + ')' : 'Estimasi 2-3 Hari (Rp 20.000)')"></span>
                         </label>
 
                         <label @click="setShippingMethod('sicepat')" 
@@ -127,7 +157,9 @@
                                 <span class="font-black text-xs uppercase">SiCepat BEST</span>
                                 <input type="radio" name="shipping" value="sicepat" x-model="form.shippingMethod" class="accent-red-600">
                             </div>
-                            <span class="text-[11px] font-medium text-gray-500" x-text="subtotal >= 250000 ? 'Gratis Ongkir (Min. 250rb)' : 'Fast Delivery 1-2 Hari (Rp 25.000)'"></span>
+                            <span class="text-[11px] font-medium"
+                                  :class="(isWithinFreeRadius || isEligibleMinOrderFreeShipping) ? 'text-emerald-600 font-bold' : 'text-gray-500'"
+                                  x-text="isWithinFreeRadius ? 'Gratis Ongkir Malang Kota' : (isEligibleMinOrderFreeShipping ? 'Gratis Ongkir (Min. ' + minOrderLabel + ')' : 'Fast Delivery 1-2 Hari (Rp 25.000)')"></span>
                         </label>
 
                         <label @click="setShippingMethod('pickup')" 
@@ -141,10 +173,44 @@
                         </label>
                     </div>
 
-                    <!-- Alamat Diisi Jika Bukan Ambil di Tempat -->
-                    <div x-show="form.shippingMethod !== 'pickup'" x-transition class="pt-2">
-                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alamat Lengkap Pengiriman</label>
-                        <textarea x-model="form.address" rows="3" placeholder="Nama jalan, nomor rumah, RT/RW, kecamatan, kota..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-600"></textarea>
+                    <!-- Peta & Alamat Diisi Jika Bukan Ambil di Tempat -->
+                    <div x-show="form.shippingMethod !== 'pickup'" x-transition class="pt-2 space-y-3">
+                        @if($freeShippingEnabled)
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <label class="block text-xs font-bold text-gray-700 uppercase">
+                                    Titik Lokasi Pengiriman (Cek Gratis Ongkir Malang Kota)
+                                </label>
+                                <button type="button"
+                                        @click="useCurrentLocation()"
+                                        :disabled="isLocating"
+                                        class="text-[11px] font-black bg-gray-900 hover:bg-red-600 disabled:bg-gray-400 text-white px-3 py-1.5 rounded-xl transition cursor-pointer">
+                                    <span x-show="!isLocating">📍 Gunakan Lokasi Saya (GPS)</span>
+                                    <span x-show="isLocating" x-cloak>Mendeteksi GPS...</span>
+                                </button>
+                            </div>
+
+                            <div id="checkout-delivery-map" class="w-full h-56 rounded-2xl border border-gray-200 overflow-hidden z-10"></div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-gray-50 px-3.5 py-2.5 rounded-xl border border-gray-200">
+                                <span class="text-gray-500 font-medium" x-show="distanceKm === null">
+                                    Klik peta atau gunakan GPS untuk mengecek gratis ongkir area Malang Kota (radius <strong x-text="freeRadiusKm + ' km'"></strong> dari store).
+                                </span>
+                                <span class="font-bold text-gray-800" x-show="distanceKm !== null" x-cloak>
+                                    Jarak dari Store: <span class="text-red-600" x-text="distanceKm + ' km'"></span>
+                                </span>
+                                <span x-show="isWithinFreeRadius" x-cloak class="bg-emerald-100 text-emerald-700 font-black px-2.5 py-0.5 rounded-md">
+                                    ✓ GRATIS ONGKIR MALANG KOTA
+                                </span>
+                                <span x-show="distanceKm !== null && !isWithinFreeRadius" x-cloak class="bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-md">
+                                    Di Luar Radius Gratis Ongkir
+                                </span>
+                            </div>
+                        @endif
+
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Alamat Lengkap Pengiriman</label>
+                            <textarea x-model="form.address" rows="3" placeholder="Nama jalan, nomor rumah, RT/RW, kecamatan, kota..." class="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-red-600"></textarea>
+                        </div>
                     </div>
 
                     <div class="pt-1">
@@ -355,7 +421,17 @@
                             <span class="font-black" x-text="'- Rp ' + Number(effectiveDiscount).toLocaleString('id-ID')"></span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span>Biaya Pengiriman (<span class="uppercase" x-text="form.shippingMethod"></span>)</span>
+                            <span>
+                                Biaya Pengiriman (<span class="uppercase" x-text="form.shippingMethod"></span>)
+                                @if($freeShippingEnabled)
+                                    <span x-show="isWithinFreeRadius && form.shippingMethod !== 'pickup'" x-cloak class="block text-[10px] text-emerald-600 font-bold">
+                                        Gratis Ongkir Radius Malang (<span x-text="distanceKm + ' km'"></span>)
+                                    </span>
+                                @endif
+                                <span x-show="!isWithinFreeRadius && isEligibleMinOrderFreeShipping && form.shippingMethod !== 'pickup'" x-cloak class="block text-[10px] text-emerald-600 font-bold">
+                                    Promo Gratis Ongkir Min. Belanja <span x-text="minOrderLabel"></span>
+                                </span>
+                            </span>
                             <span class="font-bold" :class="shippingCost === 0 ? 'text-green-600 bg-green-50 px-2 py-0.5 rounded' : 'text-gray-900'" x-text="shippingCost === 0 ? 'GRATIS' : 'Rp ' + Number(shippingCost).toLocaleString('id-ID')"></span>
                         </div>
                     </div>

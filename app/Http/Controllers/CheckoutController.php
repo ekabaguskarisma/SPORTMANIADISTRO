@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\SiteSetting;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -38,6 +39,8 @@ class CheckoutController extends Controller
             'phone'           => ['required', 'string', 'regex:/^\+?[0-9\s\-\(\)]{8,20}$/'],
             'email'           => 'nullable|email|max:255',
             'address'         => 'required_unless:shipping_method,pickup|nullable|string|max:1000',
+            'shipping_lat'    => 'nullable|numeric|between:-90,90',
+            'shipping_lng'    => 'nullable|numeric|between:-180,180',
             'shipping_method' => 'required|string|in:jne,sicepat,pickup',
             'payment_method'  => 'required|string|in:transfer,qris,cod',
             'notes'           => 'nullable|string|max:500',
@@ -163,7 +166,56 @@ class CheckoutController extends Controller
             }
 
             $subtotal = $calculatedSubtotal;
-            if ($request->shipping_method === 'pickup' || $subtotal >= 250000) {
+
+            // ==========================================
+            // HITUNG JARAK & ZONA GRATIS ONGKIR MALANG KOTA
+            // ==========================================
+            $distanceKm = 0;
+            $withinFreeRadius = false;
+
+            $storeLoc = class_exists(SiteSetting::class) && Schema::hasTable('site_settings')
+                ? SiteSetting::getJson('store_location', [
+                    'free_shipping_enabled' => true,
+                    'min_order_free_shipping_enabled' => true,
+                    'min_order_free_shipping_amount' => 250000,
+                    'store_lat' => -7.9398,
+                    'store_lng' => 112.6083,
+                    'free_shipping_radius_km' => 10,
+                ])
+                : [
+                    'free_shipping_enabled' => true,
+                    'min_order_free_shipping_enabled' => true,
+                    'min_order_free_shipping_amount' => 250000,
+                    'store_lat' => -7.9398,
+                    'store_lng' => 112.6083,
+                    'free_shipping_radius_km' => 10,
+                ];
+
+            $freeShippingEnabled = (bool) ($storeLoc['free_shipping_enabled'] ?? true);
+            $minOrderFreeShippingEnabled = (bool) ($storeLoc['min_order_free_shipping_enabled'] ?? true);
+            $minOrderFreeShippingAmount = (float) ($storeLoc['min_order_free_shipping_amount'] ?? 250000);
+
+            if ($freeShippingEnabled && $request->shipping_method !== 'pickup' && $request->filled('shipping_lat') && $request->filled('shipping_lng')) {
+                $lat1 = deg2rad((float) ($storeLoc['store_lat'] ?? -7.9398));
+                $lon1 = deg2rad((float) ($storeLoc['store_lng'] ?? 112.6083));
+                $lat2 = deg2rad((float) $request->shipping_lat);
+                $lon2 = deg2rad((float) $request->shipping_lng);
+
+                $dLat = $lat2 - $lat1;
+                $dLon = $lon2 - $lon1;
+                $a = sin($dLat / 2) ** 2 + cos($lat1) * cos($lat2) * (sin($dLon / 2) ** 2);
+                $distanceKm = round(6371 * 2 * atan2(sqrt($a), sqrt(1 - $a)), 2);
+
+                $freeRadius = (float) ($storeLoc['free_shipping_radius_km'] ?? 10);
+                if ($freeRadius > 0 && $distanceKm <= $freeRadius) {
+                    $withinFreeRadius = true;
+                }
+            }
+
+            $eligibleMinOrderFreeShipping = $minOrderFreeShippingEnabled
+                && ($minOrderFreeShippingAmount <= 0 || $subtotal >= $minOrderFreeShippingAmount);
+
+            if ($request->shipping_method === 'pickup' || ($freeShippingEnabled && $withinFreeRadius) || $eligibleMinOrderFreeShipping) {
                 $shippingCost = 0;
             } else {
                 $shippingCost = $request->shipping_method === 'sicepat' ? 25000 : 20000;
@@ -258,6 +310,18 @@ class CheckoutController extends Controller
                 'notes'           => $request->notes ? trim($request->notes) : null,
             ];
 
+            if ($request->shipping_method !== 'pickup' && $request->filled('shipping_lat') && $request->filled('shipping_lng')) {
+                if (in_array('shipping_lat', $orderColumns, true)) {
+                    $orderPayload['shipping_lat'] = (float) $request->shipping_lat;
+                }
+                if (in_array('shipping_lng', $orderColumns, true)) {
+                    $orderPayload['shipping_lng'] = (float) $request->shipping_lng;
+                }
+                if (in_array('shipping_distance_km', $orderColumns, true)) {
+                    $orderPayload['shipping_distance_km'] = $distanceKm;
+                }
+            }
+
             if (in_array('voucher_code', $orderColumns, true)) {
                 $orderPayload['voucher_code'] = $appliedVoucherCode;
             }
@@ -341,6 +405,7 @@ class CheckoutController extends Controller
                 'order_number'    => $orderNumber,
                 'voucher_code'    => $appliedVoucherCode,
                 'discount_amount' => $discountAmount,
+                'shipping_cost'   => $shippingCost,
                 'total'           => $total,
                 'redirect'        => route('customer.orders'),
                 'message'         => 'Pesanan berhasil dibuat dan stok diperbarui!',

@@ -336,35 +336,45 @@ window.welcomePromoCarousel = function () {
 };
 
 window.welcomeLookbookCarousel = function () {
+    const serverSlides = window.__SM_LOOKBOOK_SLIDES__ || [];
     return {
         activeSlide: 0,
         paused: false,
-        slides: [
-            {
-                title: "PRO RUNNING 2026",
-                subtitle: "PERFORMANCE APPAREL",
-                desc: "Dirancang dengan teknologi aerodinamis ringan untuk memaksimalkan kecepatan lari tanpa kompromi.",
-                bgImage:
-                    "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1600&auto=format&fit=crop",
-                tag: "01 / BEST SELLER",
-            },
-            {
-                title: "STREET GYM EDIT",
-                subtitle: "URBAN SPORTSWEAR",
-                desc: "Kombinasi bahan dry-fit premium yang menyerap keringat dengan gaya urban streetwear yang trendi.",
-                bgImage:
-                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1600&auto=format&fit=crop",
-                tag: "02 / NEW COLLECTION",
-            },
-            {
-                title: "ELITE TRAINING",
-                subtitle: "MAXIMUM STRENGTH",
-                desc: "Dukungan perlengkapan angkat beban profesional untuk menjaga stabilitas dan performa latihan maksimal.",
-                bgImage:
-                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1600&auto=format&fit=crop",
-                tag: "03 / HIGH PERFORMANCE",
-            },
-        ],
+        slides:
+            serverSlides.length > 0
+                ? serverSlides
+                : [
+                      {
+                          title: "PRO RUNNING 2026",
+                          subtitle: "PERFORMANCE APPAREL",
+                          desc: "Dirancang dengan teknologi aerodinamis ringan untuk memaksimalkan kecepatan lari tanpa kompromi.",
+                          bgImage:
+                              "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1600&auto=format&fit=crop",
+                          tag: "01 / BEST SELLER",
+                          ctaText: "Jelajahi Koleksi",
+                          ctaUrl: "#katalog",
+                      },
+                      {
+                          title: "STREET GYM EDIT",
+                          subtitle: "URBAN SPORTSWEAR",
+                          desc: "Kombinasi bahan dry-fit premium yang menyerap keringat dengan gaya urban streetwear yang trendi.",
+                          bgImage:
+                              "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1600&auto=format&fit=crop",
+                          tag: "02 / NEW COLLECTION",
+                          ctaText: "Jelajahi Koleksi",
+                          ctaUrl: "#katalog",
+                      },
+                      {
+                          title: "ELITE TRAINING",
+                          subtitle: "MAXIMUM STRENGTH",
+                          desc: "Dukungan perlengkapan angkat beban profesional untuk menjaga stabilitas dan performa latihan maksimal.",
+                          bgImage:
+                              "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1600&auto=format&fit=crop",
+                          tag: "03 / HIGH PERFORMANCE",
+                          ctaText: "Jelajahi Koleksi",
+                          ctaUrl: "#katalog",
+                      },
+                  ],
         next() {
             this.activeSlide = (this.activeSlide + 1) % this.slides.length;
         },
@@ -382,42 +392,50 @@ window.welcomeLookbookCarousel = function () {
 };
 
 window.welcomeEditorialCategories = function () {
+    const serverCategories = window.__SM_EDITORIAL_CATEGORIES__ || [];
+    const defaultCategories = [
+        {
+            id: "women",
+            name: "WOMEN",
+            subtitle: "Elegance & Active",
+            image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
+            tagline: "Eksklusif Koleksi Wanita Aktif & Stylish",
+        },
+        {
+            id: "men",
+            name: "MEN",
+            subtitle: "Streetwear & Sport",
+            image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop",
+            tagline: "Performa Maskulin & Urban Fashion",
+        },
+        {
+            id: "sports",
+            name: "SPORTS",
+            subtitle: "High Performance",
+            image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1000&auto=format&fit=crop",
+            tagline: "Gear Profesional untuk Atlet Juara",
+        },
+        {
+            id: "lifestyle",
+            name: "LIFESTYLE",
+            subtitle: "Daily Comfort",
+            image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1000&auto=format&fit=crop",
+            tagline: "Kenyamanan Maksimal Setiap Hari",
+        },
+    ];
+    const categories =
+        serverCategories.length > 0 ? serverCategories : defaultCategories;
+
     return {
-        activeCategory: "women",
-        categories: [
-            {
-                id: "women",
-                name: "WOMEN",
-                subtitle: "Elegance & Active",
-                image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&auto=format&fit=crop",
-                tagline: "Eksklusif Koleksi Wanita Aktif & Stylish",
-            },
-            {
-                id: "men",
-                name: "MEN",
-                subtitle: "Streetwear & Sport",
-                image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&auto=format&fit=crop",
-                tagline: "Performa Maskulin & Urban Fashion",
-            },
-            {
-                id: "sports",
-                name: "SPORTS",
-                subtitle: "High Performance",
-                image: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?q=80&w=1000&auto=format&fit=crop",
-                tagline: "Gear Profesional untuk Atlet Juara",
-            },
-            {
-                id: "lifestyle",
-                name: "LIFESTYLE",
-                subtitle: "Daily Comfort",
-                image: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=1000&auto=format&fit=crop",
-                tagline: "Kenyamanan Maksimal Setiap Hari",
-            },
-        ],
+        activeCategory: categories[0]?.id || "women",
+        categories,
     };
 };
 
 window.welcomeFooter = function () {
+    const config = window.__SM_WELCOME_CONFIG__ || {};
+    const freeRadius = config.freeShippingRadiusKm ?? 10;
+
     return {
         newsletterEmail: "",
         newsletterPref: "",
@@ -444,8 +462,7 @@ window.welcomeFooter = function () {
             ongkir: {
                 badge: "Informasi Pengiriman",
                 title: "Pengiriman & Promo Gratis Ongkir",
-                content:
-                    "Kami mendukung pengiriman reguler melalui JNE REG dan SiCepat ke seluruh Indonesia, serta layanan Ambil di Store (Gratis) untuk area Kota Malang. Dapatkan GRATIS ONGKIR seluruh Pulau Jawa untuk minimal belanja Rp 250.000.",
+                content: `Kami mendukung pengiriman reguler melalui JNE REG dan SiCepat ke seluruh Indonesia, serta layanan Ambil di Store (Gratis) di Kota Malang.\n\nDapatkan GRATIS ONGKIR khusus pengiriman area Kota Malang dalam radius ${freeRadius} km dari titik store kami!`,
             },
             tentang: {
                 badge: "Profil Toko",
