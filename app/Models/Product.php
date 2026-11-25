@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
@@ -15,6 +16,7 @@ class Product extends Model
         'description',
         'price',
         'discount_price',
+        'hpp',
         'image',
         'video',
         'is_featured',
@@ -24,7 +26,35 @@ class Product extends Model
         'is_featured' => 'boolean',
         'price' => 'integer',
         'discount_price' => 'integer',
+        'hpp' => 'integer',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Product $product) {
+            if (blank($product->slug) && filled($product->name)) {
+                $product->slug = static::generateUniqueSlug($product->name);
+            }
+        });
+    }
+
+    public static function generateUniqueSlug(string $name, ?int $ignoreId = null): string
+    {
+        $baseSlug = Str::slug($name) ?: 'produk';
+        $slug = $baseSlug;
+        $counter = 2;
+
+        while (
+            static::where('slug', $slug)
+                ->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))
+                ->exists()
+        ) {
+            $slug = "{$baseSlug}-{$counter}";
+            $counter++;
+        }
+
+        return $slug;
+    }
 
     public function category(): BelongsTo
     {

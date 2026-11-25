@@ -46,7 +46,7 @@ class ProductController extends Controller
         // 1. Simpan Foto Utama (Cover)
         $mainImagePath = $request->file('image')->store('products', 'public');
 
-        // 2. Buat Produk Baru
+        // 2. Buat Produk Baru (slug otomatis dibuat unik di booted() model Product)
         $product = Product::create([
             'name'           => $request->name,
             'category_id'    => $request->category_id,
