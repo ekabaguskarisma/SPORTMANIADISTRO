@@ -264,6 +264,14 @@
     <meta name="description" content="Sport Mania Distro - Pusat Sport Fashion & Apparel Original Terdepan di Malang ({{ $storeAddress }}).">
     <title>Sport Mania Distro | Premium Sportswear</title>
 
+    @guest
+    <script>
+        try {
+            localStorage.removeItem('cart_items');
+        } catch (e) {}
+    </script>
+    @endguest
+
     @vite([
         'resources/css/app.css',
         'resources/js/app.js',
@@ -440,10 +448,6 @@
                                 </div>
                             </div>
                         @else
-                            <a href="{{ route('customer.cart') }}" class="relative text-gray-700 hover:text-red-600 p-1.5 rounded-full hover:bg-gray-100 mr-2" title="Keranjang Belanja" aria-label="Keranjang Belanja">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                                <span x-show="cartCount > 0" x-cloak class="absolute top-0 right-0 bg-red-600 text-white text-[9px] font-black px-1 py-0.5 rounded-full" x-text="cartCount"></span>
-                            </a>
                             <div class="flex items-center space-x-2 border-l border-gray-200 pl-3">
                                 <a href="{{ route('login') }}" class="text-gray-700 hover:text-red-600 font-bold text-xs uppercase px-2 py-1">Log in</a>
                                 <a href="{{ route('register') }}" class="bg-gray-900 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase tracking-wider shadow-sm transition">Daftar</a>
@@ -466,11 +470,15 @@
                         </svg>
                     </button>
 
-                    <!-- Tombol Keranjang Mobile -->
-                    <a href="{{ route('customer.cart') }}" class="relative text-gray-700 hover:bg-gray-100 p-2 rounded-full transition" title="Keranjang Belanja" aria-label="Keranjang Belanja">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                        <span x-show="cartCount > 0" x-cloak class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
-                    </a>
+                    @auth
+                        @if(!in_array(Auth::user()->role, ['admin', 'owner'], true))
+                            <!-- Tombol Keranjang Mobile -->
+                            <a href="{{ route('customer.cart') }}" class="relative text-gray-700 hover:bg-gray-100 p-2 rounded-full transition" title="Keranjang Belanja" aria-label="Keranjang Belanja">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
+                                <span x-show="cartCount > 0" x-cloak class="absolute top-0.5 right-0.5 bg-red-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full" x-text="cartCount"></span>
+                            </a>
+                        @endif
+                    @endauth
 
                     <!-- Tombol Hamburger Menu -->
                     <button type="button"
