@@ -17,42 +17,13 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Product::with(['category', 'variants', 'images']);
+        // Seluruh produk dimuat utuh ke welcome.blade.php karena filter kategori,
+        // promo, dan pencarian (?category=... / ?search=...) ditangani langsung
+        // oleh Alpine.js di sisi browser melalui __SM_WELCOME_CONFIG__.
+        $products = Product::with(['category', 'variants', 'images'])
+            ->latest()
+            ->get();
 
-        // Filter Kategori & Promo Spesial
-        if ($request->filled('category') && strtolower($request->category) !== 'semua') {
-            $categoryParam = strtolower(trim($request->category));
-
-            if ($categoryParam === 'promo') {
-                $query->whereNotNull('discount_price')
-                      ->where('discount_price', '>', 0);
-            } elseif (is_numeric($categoryParam)) {
-                $query->where('category_id', (int) $categoryParam);
-            } else {
-                $query->whereHas('category', function ($q) use ($categoryParam) {
-                    $q->where('name', 'like', '%' . $categoryParam . '%');
-                });
-            }
-        }
-
-        if ($request->boolean('promo')) {
-            $query->whereNotNull('discount_price')
-                  ->where('discount_price', '>', 0);
-        }
-
-        // Pencarian Kata Kunci (nama produk, deskripsi, dan nama kategori)
-        if ($request->filled('search')) {
-            $keyword = trim($request->search);
-            $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'like', '%' . $keyword . '%')
-                  ->orWhere('description', 'like', '%' . $keyword . '%')
-                  ->orWhereHas('category', function ($catQuery) use ($keyword) {
-                      $catQuery->where('name', 'like', '%' . $keyword . '%');
-                  });
-            });
-        }
-
-        $products = $query->latest()->get();
         $categories = Category::all();
 
         return view('welcome', compact('products', 'categories'));

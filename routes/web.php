@@ -79,10 +79,6 @@ View::composer('welcome', function ($view) {
 Route::get('/', [ProductController::class, 'index'])->name('home');
 Route::get('/produk/{id}', [ProductController::class, 'show'])->name('produk.show');
 
-Route::get('/customer/cart', function () {
-    return view('customer.cart');
-})->name('customer.cart');
-
 Route::get('/lacak-pesanan', [StoreFeatureController::class, 'trackOrder'])->name('order.track');
 Route::post('/voucher/apply', [StoreFeatureController::class, 'applyVoucher'])->name('voucher.apply');
 
@@ -106,7 +102,10 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // Checkout & Pesanan Pelanggan
+    // Keranjang, Checkout & Pesanan Pelanggan
+    Route::get('/customer/cart', function () {
+        return view('customer.cart');
+    })->name('customer.cart');
     Route::get('/customer/checkout', [CheckoutController::class, 'index'])->name('customer.checkout');
     Route::post('/checkout/process', [CheckoutController::class, 'store'])->name('checkout.process');
 
